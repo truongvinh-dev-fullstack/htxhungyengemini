@@ -1,0 +1,171 @@
+// Custom styles for Elderly Rural Users (50-70+ years old) in Hưng Yên HTX
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --zaui-primary-color: #2e7d32;
+  --zaui-primary-color-pressed: #1b5e20;
+  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: 18px;
+  line-height: 1.5;
+  color: #1e293b;
+  background-color: #f4f6f8;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Base mobile simulator container if run in browser */
+.mobile-viewport {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #ffffff;
+  position: relative;
+  box-shadow: 0 0 20px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Elderly-friendly large click targets */
+button, .clickable-card {
+  touch-action: manipulation;
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.15s ease;
+}
+
+button:active, .clickable-card:active {
+  transform: scale(0.97);
+}
+
+/* Typography rules: >= 18px body, >= 22px headers */
+.elderly-title {
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+.elderly-body {
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+.elderly-sub {
+  font-size: 16px;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.elderly-badge {
+  font-size: 15px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Zalo Header & Tabs */
+.zalo-header {
+  background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%);
+  color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.zalo-nav-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  min-width: 68px;
+}
+
+.zalo-nav-tab.active {
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+/* Big Grid Card for Home */
+.grid-menu-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+  min-height: 112px;
+}
+
+.grid-menu-card:hover {
+  border-color: #2e7d32;
+  box-shadow: 0 6px 14px rgba(46, 125, 50, 0.12);
+}
+
+/* Audio help pulse button */
+.voice-help-btn {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1.5px solid #fcd34d;
+  border-radius: 9999px;
+  padding: 8px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.15);
+}
+
+.voice-help-btn:active {
+  background: #fde68a;
+}
+
+/* Number Counter +/- component */
+.counter-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 6px;
+}
+
+.counter-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  background: #2e7d32;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.counter-btn:disabled {
+  background: #cbd5e1;
+  color: #94a3b8;
+}
+
+.counter-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+}
