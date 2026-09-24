@@ -28,6 +28,18 @@ import {
   INITIAL_MEMBER_REQUESTS,
   INITIAL_NOTIFICATIONS,
 } from '../mock/data';
+import { API_CONFIG } from '../config/api';
+import {
+  authService,
+  diaryService,
+  zoneService,
+  harvestService,
+  packageService,
+  warehouseService,
+  orderService,
+  memberService,
+  notificationService,
+} from '../services';
 
 interface AppContextType {
   // Auth state
@@ -224,6 +236,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentHTXId(htxId);
   };
 
+  // Nạp dữ liệu từ Backend API khi VITE_USE_MOCK=false
+  useEffect(() => {
+    if (!API_CONFIG.USE_MOCK) {
+      zoneService.getFarmZones(currentHTXId).then(setFarmZones).catch(console.error);
+      diaryService.getDiaries(currentHTXId).then(setDiaries).catch(console.error);
+      harvestService.getHarvests(currentHTXId).then(setHarvests).catch(console.error);
+      packageService.getPackages(currentHTXId).then(setPackages).catch(console.error);
+      warehouseService.getInventory(currentHTXId).then(setInventory).catch(console.error);
+      warehouseService.getTransactions(currentHTXId).then(setTransactions).catch(console.error);
+      orderService.getOrders(currentHTXId).then(setOrders).catch(console.error);
+      memberService.getMembers(currentHTXId).then(setMembers).catch(console.error);
+      memberService.getRequests(currentHTXId).then(setMemberRequests).catch(console.error);
+      notificationService.getNotifications(currentHTXId).then(setNotifications).catch(console.error);
+    }
+  }, [currentHTXId]);
+
   // Check if today has diary
   const todayStr = new Date().toISOString().split('T')[0];
   const todayHasDiary = diaries.some(
@@ -240,6 +268,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdBy: currentUser.name,
     };
     setDiaries((prev) => [newEntry, ...prev]);
+
+    if (!API_CONFIG.USE_MOCK) {
+      diaryService.createDiary(newEntry).catch((err) => {
+        console.error('Lỗi lưu nhật ký qua API:', err);
+      });
+    }
   };
 
   const deleteDiary = (id: string) => {
@@ -253,6 +287,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       code: `TH-${currentHTXId.toUpperCase()}-2026-${Math.floor(100 + Math.random() * 900)}`,
     };
     setHarvests((prev) => [newLot, ...prev]);
+
+    if (!API_CONFIG.USE_MOCK) {
+      harvestService.createHarvest(newLot).catch((err) => {
+        console.error('Lỗi lưu lô thu hoạch qua API:', err);
+      });
+    }
   };
 
   const addPackage = (pkg: Omit<PackagedProduct, 'id' | 'code' | 'qrCodeUrl'>): PackagedProduct => {
@@ -264,6 +304,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=TXNG-HY-${randomCode}`,
     };
     setPackages((prev) => [newPkg, ...prev]);
+
+    if (!API_CONFIG.USE_MOCK) {
+      packageService.createPackage(newPkg).catch((err) => {
+        console.error('Lỗi lưu mã sản phẩm đóng gói qua API:', err);
+      });
+    }
+
     return newPkg;
   };
 
@@ -275,6 +322,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       invoiceNumber: `HDDT-HY-${Math.floor(10000 + Math.random() * 90000)}`,
     };
     setOrders((prev) => [newOrder, ...prev]);
+
+    if (!API_CONFIG.USE_MOCK) {
+      orderService.createOrder(newOrder).catch((err) => {
+        console.error('Lỗi lưu đơn hàng qua API:', err);
+      });
+    }
   };
 
   const approveMemberRequest = (id: string) => {
@@ -294,6 +347,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setMembers((prev) => [newMember, ...prev]);
       setMemberRequests((prev) => prev.filter((r) => r.id !== id));
+
+      if (!API_CONFIG.USE_MOCK) {
+        memberService.approveRequest(id).catch((err) => {
+          console.error('Lỗi duyệt thành viên qua API:', err);
+        });
+      }
     }
   };
 
@@ -301,6 +360,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMemberRequests((prev) =>
       prev.map((r) => (r.id === id ? { ...r, status: 'rejected', rejectionReason: reason } : r))
     );
+
+    if (!API_CONFIG.USE_MOCK) {
+      memberService.rejectRequest(id, reason).catch((err) => {
+        console.error('Lỗi từ chối duyệt qua API:', err);
+      });
+    }
   };
 
   const addMember = (member: Omit<UserProfile, 'id' | 'status'>) => {
@@ -335,6 +400,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       code: `${tx.type === 'import' ? 'NK' : 'XK'}-2026-${Math.floor(100 + Math.random() * 900)}`,
     };
     setTransactions((prev) => [newTx, ...prev]);
+
+    if (!API_CONFIG.USE_MOCK) {
+      warehouseService.createTransaction(newTx).catch((err) => {
+        console.error('Lỗi lưu giao dịch kho qua API:', err);
+      });
+    }
+
     return true;
   };
 
@@ -342,6 +414,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
+
+    if (!API_CONFIG.USE_MOCK) {
+      notificationService.markAsRead(id).catch((err) => {
+        console.error('Lỗi đánh dấu đã đọc qua API:', err);
+      });
+    }
   };
 
   return (
