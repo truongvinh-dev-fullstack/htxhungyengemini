@@ -1,9 +1,10 @@
 // Data types matching SRS v1.1 Module 3
 
-export type UserRole = 'R06' | 'R05' | 'R04' | 'R02';
+export type UserRole = 'R06' | 'R05' | 'R04' | 'R03' | 'R02';
 // R06: Thành viên / Hộ nông dân
 // R05: Tổ trưởng sản xuất
 // R04: Kế toán / Bán hàng
+// R03: Cán bộ kỹ thuật
 // R02: Ban quản trị HTX
 
 export type HTXId = 'anninh' | 'dongtao' | 'quyetthang';
@@ -34,6 +35,15 @@ export interface UserProfile {
   status: 'active' | 'pending' | 'rejected' | 'inactive';
 }
 
+export interface SeasonHistoryItem {
+  seasonName: string;
+  year: number;
+  yieldResult: string;
+  status: 'Đang canh tác' | 'Đã thu hoạch' | 'Nghỉ vụ';
+  quality?: string;
+  harvestDate?: string;
+}
+
 export interface FarmZone {
   id: string;
   htxId: HTXId;
@@ -41,6 +51,10 @@ export interface FarmZone {
   name: string; // VD: Thửa Đầm Bông
   variety: string; // Giống cây/vật nuôi: Bắc Thơm số 7, Gà thuần F1...
   season: string; // Vụ Xuân 2026
+  seasonStartDate?: string;
+  seasonEndDate?: string;
+  seasonStage?: string; // VD: "Giai đoạn đẻ nhánh rộ (Ngày 65/115)"
+  seasonHistory?: SeasonHistoryItem[];
   areaOrQuantity: string; // 3.500 m² hoặc 500 con
   forecastYield: string; // "Dự kiến thu: 2.2 tấn — còn khoảng 25 ngày"
   status: string;
@@ -80,11 +94,33 @@ export interface HarvestLot {
   notes: string;
 }
 
+export interface ProcessingLot {
+  id: string;
+  code: string; // SC-AN-2026-001
+  htxId: HTXId;
+  harvestLotId: string;
+  harvestLotCode: string;
+  farmZoneName: string;
+  productName: string;
+  date: string;
+  method: string; // Xay xát tách trấu, Sấy lạnh, Làm sạch phân loại, Hút chân không
+  inputQuantity: number;
+  outputQuantity: number;
+  unit: string; // kg, con
+  lossRatePercent: number; // e.g. 15.5
+  operatorName: string;
+  photoUrl: string;
+  notes: string;
+  status: 'Đã sơ chế' | 'Đã đóng gói';
+}
+
 export interface PackagedProduct {
   id: string;
   code: string; // SP-2026-089
   htxId: HTXId;
   harvestLotId: string;
+  processingLotId?: string;
+  processingLotCode?: string;
   productName: string; // Gạo Bắc Thơm An Ninh túi 5kg
   packQuantity: number;
   unit: string; // Gói, Hộp, Túi, Con

@@ -7,6 +7,7 @@ import {
   FarmZone,
   DiaryEntry,
   HarvestLot,
+  ProcessingLot,
   PackagedProduct,
   InventoryItem,
   StockTransaction,
@@ -20,6 +21,7 @@ import {
   INITIAL_FARM_ZONES,
   INITIAL_DIARIES,
   INITIAL_HARVESTS,
+  INITIAL_PROCESSING_LOTS,
   INITIAL_PACKAGES,
   INITIAL_INVENTORY,
   INITIAL_TRANSACTIONS,
@@ -34,6 +36,7 @@ import {
   diaryService,
   zoneService,
   harvestService,
+  processingService,
   packageService,
   warehouseService,
   orderService,
@@ -70,6 +73,7 @@ interface AppContextType {
   farmZones: FarmZone[];
   diaries: DiaryEntry[];
   harvests: HarvestLot[];
+  processingLots: ProcessingLot[];
   packages: PackagedProduct[];
   inventory: InventoryItem[];
   transactions: StockTransaction[];
@@ -79,9 +83,22 @@ interface AppContextType {
   notifications: AppNotification[];
 
   // Mutations
+  addFarmZone: (zone: Omit<FarmZone, 'id' | 'farmingDays'>) => FarmZone;
+  updateFarmZoneSeason: (
+    zoneId: string,
+    newSeasonData: {
+      season: string;
+      variety: string;
+      seasonStartDate: string;
+      seasonEndDate: string;
+      forecastYield: string;
+      notes?: string;
+    }
+  ) => void;
   addDiary: (entry: Omit<DiaryEntry, 'id' | 'createdAt' | 'isLocked' | 'createdBy'>) => void;
   deleteDiary: (id: string) => void;
   addHarvest: (lot: Omit<HarvestLot, 'id' | 'code'>) => void;
+  addProcessingLot: (lot: Omit<ProcessingLot, 'id' | 'code'>) => ProcessingLot;
   addPackage: (pkg: Omit<PackagedProduct, 'id' | 'code' | 'qrCodeUrl'>) => PackagedProduct;
   addOrder: (order: Omit<SalesOrder, 'id' | 'code'>) => void;
   approveMemberRequest: (id: string) => void;
@@ -115,6 +132,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [farmZones, setFarmZones] = useState<FarmZone[]>(INITIAL_FARM_ZONES);
   const [diaries, setDiaries] = useState<DiaryEntry[]>(INITIAL_DIARIES);
   const [harvests, setHarvests] = useState<HarvestLot[]>(INITIAL_HARVESTS);
+  const [processingLots, setProcessingLots] = useState<ProcessingLot[]>(INITIAL_PROCESSING_LOTS);
   const [packages, setPackages] = useState<PackagedProduct[]>(INITIAL_PACKAGES);
   const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
   const [transactions, setTransactions] = useState<StockTransaction[]>(INITIAL_TRANSACTIONS);
@@ -129,13 +147,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const userKey = `${currentRole}_${currentHTXId}`;
   const currentUser: UserProfile = DEMO_USERS[userKey] || {
     id: `u_${currentRole.toLowerCase()}`,
-    name: currentRole === 'R06' ? 'Bác Nguyễn Văn An' : currentRole === 'R05' ? 'Bác Trần Văn Thắng' : currentRole === 'R04' ? 'Chị Nguyễn Thị Dung' : 'Ông Phạm Văn Minh',
+    name:
+      currentRole === 'R06'
+        ? 'Bác Nguyễn Văn An'
+        : currentRole === 'R05'
+        ? 'Bác Trần Văn Thắng'
+        : currentRole === 'R04'
+        ? 'Chị Nguyễn Thị Dung'
+        : currentRole === 'R03'
+        ? 'Kỹ sư Lê Văn Hoàng'
+        : 'Ông Phạm Văn Minh',
     role: currentRole,
     phone: '0978 123 456',
     cccd: '033062001928',
     htxId: currentHTXId,
-    team: currentRole === 'R05' ? 'Tổ trưởng Tổ 1' : 'Tổ 1 - Lúa sạch',
-    avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80',
+    team:
+      currentRole === 'R05'
+        ? 'Tổ trưởng Tổ 1'
+        : currentRole === 'R03'
+        ? 'Tổ Kỹ thuật Nông nghiệp'
+        : currentRole === 'R04'
+        ? 'Ban Kế toán & Kho'
+        : currentRole === 'R02'
+        ? 'Ban Quản trị HTX'
+        : 'Tổ 1 - Lúa sạch',
+    avatar:
+      currentRole === 'R03'
+        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+        : 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80',
     address: 'Thôn An Xá, xã An Ninh',
     status: 'active',
   };
@@ -190,10 +229,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setActiveTab = (tab: 'home' | 'diary' | 'notifications' | 'profile') => {
     setActiveTabState(tab);
     setHistoryStack([]);
-    if (tab === 'home') setCurrentScreen('home');
-    else if (tab === 'diary') setCurrentScreen('diary_list');
-    else if (tab === 'notifications') setCurrentScreen('notifications');
-    else if (tab === 'profile') setCurrentScreen('profile');
+    if (tab === 'home') {
+      setCurrentScreen('home');
+    } else if (tab === 'diary') {
+      // Điều hướng thông minh theo vai trò
+      if (currentRole === 'R04') setCurrentScreen('inventory_list');
+      else if (currentRole === 'R02') setCurrentScreen('dashboard');
+      else if (currentRole === 'R03') setCurrentScreen('farm_list');
+      else if (currentRole === 'R05') setCurrentScreen('members_list');
+      else setCurrentScreen('diary_list');
+    } else if (tab === 'notifications') {
+      setCurrentScreen('notifications');
+    } else if (tab === 'profile') {
+      setCurrentScreen('profile');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -242,6 +291,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       zoneService.getFarmZones(currentHTXId).then(setFarmZones).catch(console.error);
       diaryService.getDiaries(currentHTXId).then(setDiaries).catch(console.error);
       harvestService.getHarvests(currentHTXId).then(setHarvests).catch(console.error);
+      processingService.getProcessingLots(currentHTXId).then(setProcessingLots).catch(console.error);
       packageService.getPackages(currentHTXId).then(setPackages).catch(console.error);
       warehouseService.getInventory(currentHTXId).then(setInventory).catch(console.error);
       warehouseService.getTransactions(currentHTXId).then(setTransactions).catch(console.error);
@@ -259,6 +309,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   // Mutations
+  const addFarmZone = (zone: Omit<FarmZone, 'id' | 'farmingDays'>): FarmZone => {
+    const newZone: FarmZone = {
+      ...zone,
+      id: `fz-${Date.now()}`,
+      farmingDays: 1,
+      seasonHistory: [
+        {
+          seasonName: zone.season,
+          year: new Date().getFullYear(),
+          yieldResult: zone.forecastYield,
+          status: 'Đang canh tác',
+          quality: 'Chuẩn HTX',
+        },
+      ],
+    };
+    setFarmZones((prev) => [newZone, ...prev]);
+    return newZone;
+  };
+
+  const updateFarmZoneSeason = (
+    zoneId: string,
+    newSeasonData: {
+      season: string;
+      variety: string;
+      seasonStartDate: string;
+      seasonEndDate: string;
+      forecastYield: string;
+      notes?: string;
+    }
+  ) => {
+    setFarmZones((prev) =>
+      prev.map((z) => {
+        if (z.id !== zoneId) return z;
+
+        const previousHistory = z.seasonHistory || [];
+        const closedSeasonHistory = [
+          {
+            seasonName: z.season,
+            year: new Date().getFullYear(),
+            yieldResult: `Đã kết thúc vụ • ${z.forecastYield}`,
+            status: 'Đã thu hoạch' as const,
+            quality: 'Đạt chuẩn HTX',
+            harvestDate: new Date().toLocaleDateString('vi-VN'),
+          },
+          ...previousHistory.filter((h) => h.seasonName !== z.season),
+        ];
+
+        return {
+          ...z,
+          season: newSeasonData.season,
+          variety: newSeasonData.variety,
+          seasonStartDate: newSeasonData.seasonStartDate,
+          seasonEndDate: newSeasonData.seasonEndDate,
+          seasonStage: 'Mới xuống giống (Ngày 1)',
+          forecastYield: newSeasonData.forecastYield,
+          farmingDays: 1,
+          status: 'Đang canh tác',
+          notes: newSeasonData.notes || z.notes,
+          seasonHistory: [
+            {
+              seasonName: newSeasonData.season,
+              year: new Date().getFullYear(),
+              yieldResult: newSeasonData.forecastYield,
+              status: 'Đang canh tác' as const,
+              quality: 'Chuẩn HTX',
+            },
+            ...closedSeasonHistory,
+          ],
+        };
+      })
+    );
+  };
+
   const addDiary = (entry: Omit<DiaryEntry, 'id' | 'createdAt' | 'isLocked' | 'createdBy'>) => {
     const newEntry: DiaryEntry = {
       ...entry,
@@ -293,6 +416,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Lỗi lưu lô thu hoạch qua API:', err);
       });
     }
+  };
+
+  const addProcessingLot = (lot: Omit<ProcessingLot, 'id' | 'code'>): ProcessingLot => {
+    const randomCode = `SC-${currentHTXId.toUpperCase()}-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const newLot: ProcessingLot = {
+      ...lot,
+      id: `sc-${Date.now()}`,
+      code: randomCode,
+    };
+    setProcessingLots((prev) => [newLot, ...prev]);
+
+    if (!API_CONFIG.USE_MOCK) {
+      processingService.createProcessingLot(newLot).catch((err) => {
+        console.error('Lỗi lưu lô sơ chế qua API:', err);
+      });
+    }
+
+    return newLot;
   };
 
   const addPackage = (pkg: Omit<PackagedProduct, 'id' | 'code' | 'qrCodeUrl'>): PackagedProduct => {
@@ -446,6 +587,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         farmZones: farmZones.filter((f) => f.htxId === currentHTXId),
         diaries: diaries.filter((d) => d.htxId === currentHTXId),
         harvests: harvests.filter((h) => h.htxId === currentHTXId),
+        processingLots: processingLots.filter((p) => p.htxId === currentHTXId),
         packages: packages.filter((p) => p.htxId === currentHTXId),
         inventory: inventory.filter((i) => i.htxId === currentHTXId),
         transactions: transactions.filter((t) => t.htxId === currentHTXId),
@@ -453,9 +595,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         members: members.filter((m) => m.htxId === currentHTXId),
         memberRequests: memberRequests.filter((r) => r.htxId === currentHTXId),
         notifications,
+        addFarmZone,
+        updateFarmZoneSeason,
         addDiary,
         deleteDiary,
         addHarvest,
+        addProcessingLot,
         addPackage,
         addOrder,
         approveMemberRequest,

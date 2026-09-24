@@ -17,6 +17,9 @@ import { FarmDetail } from './farm/FarmDetail';
 import { HarvestList } from './harvest/HarvestList';
 import { HarvestAdd } from './harvest/HarvestAdd';
 import { HarvestDetail } from './harvest/HarvestDetail';
+import { ProcessingList } from './processing/ProcessingList';
+import { ProcessingAdd } from './processing/ProcessingAdd';
+import { ProcessingDetail } from './processing/ProcessingDetail';
 import { PackagingList } from './packaging/PackagingList';
 import { PackagingAdd } from './packaging/PackagingAdd';
 import { PackagingQRView } from './packaging/PackagingQRView';
@@ -63,6 +66,12 @@ export const MainApp: React.FC = () => {
         return <HarvestAdd />;
       case 'harvest_detail':
         return <HarvestDetail />;
+      case 'processing_list':
+        return <ProcessingList />;
+      case 'processing_add':
+        return <ProcessingAdd />;
+      case 'processing_detail':
+        return <ProcessingDetail />;
       case 'packaging_list':
         return <PackagingList />;
       case 'packaging_add':

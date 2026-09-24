@@ -4,11 +4,22 @@ import { Header } from '../../components/Header';
 import { CounterInput } from '../../components/CounterInput';
 
 export const PackagingAdd: React.FC = () => {
-  const { harvests, addPackage, navigateTo, currentHTX, speakText } = useApp();
+  const { harvests, processingLots, addPackage, navigateTo, currentHTX, speakText, screenParams } = useApp();
+
+  const prefilledProcessingLot = screenParams?.processingLot;
+
+  const [sourceType, setSourceType] = useState<'processing' | 'harvest'>(
+    prefilledProcessingLot || processingLots.length > 0 ? 'processing' : 'harvest'
+  );
+
+  const [selectedProcessingId, setSelectedProcessingId] = useState<string>(
+    prefilledProcessingLot?.id || (processingLots.length > 0 ? processingLots[0].id : '')
+  );
 
   const [selectedHarvestId, setSelectedHarvestId] = useState<string>(
-    harvests.length > 0 ? harvests[0].id : ''
+    prefilledProcessingLot?.harvestLotId || (harvests.length > 0 ? harvests[0].id : '')
   );
+
   const [productName, setProductName] = useState<string>(
     currentHTX.id === 'dongtao'
       ? 'Gà Đông Tảo thuần chủng (Con hút chân không)'
@@ -20,11 +31,16 @@ export const PackagingAdd: React.FC = () => {
   const [unit, setUnit] = useState<string>('Túi');
   const [standard, setStandard] = useState<string>('VietGAP - OCOP 4 sao');
 
+  const selectedProc = processingLots.find((p) => p.id === selectedProcessingId);
+
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
+
     const createdPkg = addPackage({
       htxId: currentHTX.id,
-      harvestLotId: selectedHarvestId,
+      harvestLotId: sourceType === 'processing' && selectedProc ? selectedProc.harvestLotId : selectedHarvestId,
+      processingLotId: sourceType === 'processing' && selectedProc ? selectedProc.id : undefined,
+      processingLotCode: sourceType === 'processing' && selectedProc ? selectedProc.code : undefined,
       productName,
       packQuantity: quantity,
       unit,
@@ -41,26 +57,66 @@ export const PackagingAdd: React.FC = () => {
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
         title="Đóng gói & Tạo mã QR"
-        voiceText="Bác hãy chọn lô thu hoạch cần đóng gói, dùng nút cộng trừ để chỉnh số lượng gói, sau đó bấm nút xanh để tự động sinh mã QR nhé."
+        voiceText="Bác hãy chọn lô sơ chế hoặc lô thu hoạch cần đóng gói, dùng nút cộng trừ để chỉnh số lượng gói, sau đó bấm nút xanh để tự động sinh mã QR nhé."
       />
 
       <div className="p-4 space-y-4">
         <form onSubmit={handleGenerate} className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-4">
-          <div>
-            <label className="block text-base font-bold text-slate-800 mb-1.5">
-              1. Chọn Lô thu hoạch đầu vào: <span className="text-red-500">*</span>
+          {/* Lựa chọn nguồn đóng gói */}
+          <div className="space-y-2">
+            <label className="block text-base font-bold text-slate-800">
+              1. Chọn nguồn nguyên liệu đóng gói: <span className="text-red-500">*</span>
             </label>
-            <select
-              value={selectedHarvestId}
-              onChange={(e) => setSelectedHarvestId(e.target.value)}
-              className="w-full h-14 px-3 rounded-2xl border-2 border-slate-300 text-base font-bold text-slate-900 bg-slate-50 focus:border-blue-600 focus:outline-none"
-            >
-              {harvests.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.code} - {h.farmZoneName} ({h.yieldQuantity} {h.unit})
-                </option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSourceType('processing')}
+                className={`flex-1 py-3 px-3 rounded-2xl font-extrabold text-sm border-2 transition-all ${
+                  sourceType === 'processing'
+                    ? 'bg-blue-50 border-blue-600 text-blue-900 shadow-sm'
+                    : 'bg-slate-50 border-slate-200 text-slate-600'
+                }`}
+              >
+                ⚙️ Từ Lô sơ chế ({processingLots.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSourceType('harvest')}
+                className={`flex-1 py-3 px-3 rounded-2xl font-extrabold text-sm border-2 transition-all ${
+                  sourceType === 'harvest'
+                    ? 'bg-amber-50 border-amber-600 text-amber-900 shadow-sm'
+                    : 'bg-slate-50 border-slate-200 text-slate-600'
+                }`}
+              >
+                🌾 Từ Lô thu hoạch ({harvests.length})
+              </button>
+            </div>
+
+            {sourceType === 'processing' ? (
+              <select
+                value={selectedProcessingId}
+                onChange={(e) => setSelectedProcessingId(e.target.value)}
+                className="w-full h-14 px-3 rounded-2xl border-2 border-blue-300 text-sm font-bold text-slate-900 bg-blue-50/50 focus:border-blue-600 focus:outline-none"
+              >
+                {processingLots.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.code} - {p.method} (Ra: {p.outputQuantity} {p.unit})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                value={selectedHarvestId}
+                onChange={(e) => setSelectedHarvestId(e.target.value)}
+                className="w-full h-14 px-3 rounded-2xl border-2 border-amber-300 text-sm font-bold text-slate-900 bg-amber-50/50 focus:border-amber-600 focus:outline-none"
+              >
+                {harvests.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.code} - {h.farmZoneName} ({h.yieldQuantity} {h.unit})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>

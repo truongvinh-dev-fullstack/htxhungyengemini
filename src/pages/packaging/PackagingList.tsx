@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 import { PackagedProduct } from '../../types';
+import { PostHarvestWorkflowTabs } from '../../components/PostHarvestWorkflowTabs';
 
 export const PackagingList: React.FC = () => {
   const { packages, navigateTo } = useApp();
@@ -14,6 +15,9 @@ export const PackagingList: React.FC = () => {
       />
 
       <div className="p-4 space-y-4">
+        {/* Chuỗi 3 công đoạn */}
+        <PostHarvestWorkflowTabs activeTab="packaging" />
+
         {/* Action Banner */}
         <div className="bg-blue-50 border-2 border-blue-300 rounded-3xl p-4 flex items-center justify-between gap-3">
           <div>

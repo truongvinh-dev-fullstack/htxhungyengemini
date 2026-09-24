@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 import { HarvestLot } from '../../types';
+import { PostHarvestWorkflowTabs } from '../../components/PostHarvestWorkflowTabs';
 
 export const HarvestList: React.FC = () => {
   const { harvests, navigateTo } = useApp();
@@ -14,6 +15,9 @@ export const HarvestList: React.FC = () => {
       />
 
       <div className="p-4 space-y-4">
+        {/* Chuỗi 3 công đoạn */}
+        <PostHarvestWorkflowTabs activeTab="harvest" />
+
         {/* Action Banner */}
         <div className="bg-orange-50 border-2 border-orange-300 rounded-3xl p-4 flex items-center justify-between gap-3">
           <div>

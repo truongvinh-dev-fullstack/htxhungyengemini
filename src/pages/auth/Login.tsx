@@ -43,6 +43,16 @@ export const Login: React.FC = () => {
       color: 'bg-amber-100 text-amber-900 border-amber-300',
     },
     {
+      phone: '0936 888 777',
+      name: 'Kỹ sư Lê Văn Hoàng',
+      roleCode: 'R03',
+      role: 'R03: Cán bộ Kỹ thuật',
+      desc: 'Mùa vụ, quy trình VietGAP, lô sơ chế, đóng gói QR',
+      htx: 'HTX An Ninh (Lúa sạch)',
+      tag: 'Hợp lệ',
+      color: 'bg-cyan-100 text-cyan-900 border-cyan-300',
+    },
+    {
       phone: '0912 345 678',
       name: 'Ông Phạm Văn Minh',
       roleCode: 'R02',

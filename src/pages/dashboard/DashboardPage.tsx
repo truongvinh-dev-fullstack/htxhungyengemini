@@ -3,24 +3,36 @@ import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 
 export const DashboardPage: React.FC = () => {
-  const { currentRole, currentHTX, currentUser, orders } = useApp();
+  const { currentRole, currentHTX, currentUser, orders, inventory } = useApp();
 
-  const isLeader = currentRole === 'R02';
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const totalStockValue = inventory.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+
+  const getDashboardTitle = () => {
+    switch (currentRole) {
+      case 'R02':
+        return 'Báo cáo toàn HTX';
+      case 'R04':
+        return 'Báo cáo Doanh thu & Bán hàng';
+      case 'R03':
+        return 'Báo cáo Kỹ thuật & Mùa vụ';
+      case 'R05':
+        return 'Báo cáo Tổ sản xuất';
+      case 'R06':
+      default:
+        return 'Báo cáo mùa vụ của tôi';
+    }
+  };
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
-        title={isLeader ? 'Báo cáo toàn HTX' : 'Báo cáo của tôi'}
-        voiceText={
-          isLeader
-            ? `Báo cáo tổng hợp toàn ${currentHTX.name} dành cho ban quản trị. Tổng số 128 thành viên, 185 hecta diện tích canh tác.`
-            : `Báo cáo cá nhân của bác ${currentUser.name}. Diện tích 6.000 mét vuông, sản lượng vụ này 3,7 tấn, doanh thu tháng đạt ${totalRevenue.toLocaleString()} đồng.`
-        }
+        title={getDashboardTitle()}
+        voiceText={`Báo cáo ${getDashboardTitle()} ${currentHTX.name}.`}
       />
 
       <div className="p-4 space-y-4">
-        {isLeader ? (
+        {currentRole === 'R02' && (
           /* CN-3.4.1: Dashboard lãnh đạo HTX (R02) */
           <div className="space-y-4">
             <div className="bg-gradient-to-r from-emerald-800 to-teal-800 text-white rounded-3xl p-5 shadow-lg space-y-2">
@@ -51,7 +63,7 @@ export const DashboardPage: React.FC = () => {
                 <span className="text-2xl">🚜</span>
                 <span className="text-xs font-bold text-slate-500 block">Sản lượng dự kiến</span>
                 <span className="text-2xl font-extrabold text-slate-900">920 tấn</span>
-                <span className="text-[11px] text-amber-700 font-bold block">Thu hoạch tháng 10</span>
+                <span className="text-[11px] text-amber-700 font-bold block">Thu hoạch vụ Xuân</span>
               </div>
 
               <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
@@ -100,13 +112,100 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
           </div>
-        ) : (
-          /* CN-3.4.2: Dashboard cho thành viên / Hộ nông dân (R06) */
-          /* SRS: Tối đa 3 thẻ số liệu lớn + 1 biểu đồ đơn giản */
+        )}
+
+        {currentRole === 'R04' && (
+          /* Dashboard Kế toán / Bán hàng (R04) */
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-purple-800 to-indigo-800 text-white rounded-3xl p-5 shadow-lg space-y-2">
+              <span className="text-xs uppercase font-extrabold tracking-wider text-purple-200">
+                TỔNG KẾT DOANH THU & KHO
+              </span>
+              <h3 className="text-2xl font-extrabold">{currentUser.name}</h3>
+              <p className="text-xs text-purple-100">Ban Kế toán & Quản lý bán hàng HTX</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
+                <span className="text-2xl">💰</span>
+                <span className="text-xs font-bold text-slate-500 block">Doanh thu đơn hàng</span>
+                <span className="text-xl font-extrabold text-purple-900">{totalRevenue.toLocaleString()} đ</span>
+                <span className="text-[11px] text-emerald-700 font-bold block">{orders.length} đơn đã tạo</span>
+              </div>
+
+              <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
+                <span className="text-2xl">🏬</span>
+                <span className="text-xs font-bold text-slate-500 block">Giá trị tồn kho</span>
+                <span className="text-xl font-extrabold text-amber-900">{totalStockValue.toLocaleString()} đ</span>
+                <span className="text-[11px] text-blue-700 font-bold block">{inventory.length} danh mục vật tư</span>
+              </div>
+
+              <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
+                <span className="text-2xl">📦</span>
+                <span className="text-xs font-bold text-slate-500 block">Đơn hoàn thành</span>
+                <span className="text-2xl font-extrabold text-emerald-700">100%</span>
+                <span className="text-[11px] text-slate-500 font-medium block">Không có khiếu nại</span>
+              </div>
+
+              <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
+                <span className="text-2xl">🤝</span>
+                <span className="text-xs font-bold text-slate-500 block">Khách hàng / Đối tác</span>
+                <span className="text-2xl font-extrabold text-slate-900">18 đối tác</span>
+                <span className="text-[11px] text-emerald-700 font-bold block">Siêu thị & đại lý</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentRole === 'R03' && (
+          /* Dashboard Cán bộ kỹ thuật (R03) */
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-cyan-800 to-blue-800 text-white rounded-3xl p-5 shadow-lg space-y-2">
+              <span className="text-xs uppercase font-extrabold tracking-wider text-cyan-200">
+                CHỈ SỐ GIÁM SÁT KỸ THUẬT & MÙA VỤ
+              </span>
+              <h3 className="text-2xl font-extrabold">{currentUser.name}</h3>
+              <p className="text-xs text-cyan-100">Tổ Kỹ thuật Nông nghiệp & Quản lý chất lượng</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
+                <span className="text-2xl">🌾</span>
+                <span className="text-xs font-bold text-slate-500 block">Diện tích giám sát</span>
+                <span className="text-2xl font-extrabold text-slate-900">185 ha</span>
+                <span className="text-[11px] text-emerald-700 font-bold block">100% chuẩn VietGAP</span>
+              </div>
+
+              <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
+                <span className="text-2xl">📖</span>
+                <span className="text-xs font-bold text-slate-500 block">Tỷ lệ nộp nhật ký</span>
+                <span className="text-2xl font-extrabold text-emerald-700">94.5%</span>
+                <span className="text-[11px] text-slate-500 font-medium block">Kiểm tra định kỳ</span>
+              </div>
+
+              <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
+                <span className="text-2xl">🧪</span>
+                <span className="text-xs font-bold text-slate-500 block">Lô sơ chế đạt chuẩn</span>
+                <span className="text-2xl font-extrabold text-cyan-800">100%</span>
+                <span className="text-[11px] text-emerald-700 font-bold block">Đạt tiêu chuẩn an toàn</span>
+              </div>
+
+              <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
+                <span className="text-2xl">📦</span>
+                <span className="text-xs font-bold text-slate-500 block">Tem QR đã cấp</span>
+                <span className="text-2xl font-extrabold text-blue-900">15.000</span>
+                <span className="text-[11px] text-emerald-700 font-bold block">Truy xuất minh bạch</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(currentRole === 'R06' || currentRole === 'R05') && (
+          /* CN-3.4.2: Dashboard cho thành viên / Hộ nông dân (R06) & Tổ trưởng (R05) */
           <div className="space-y-4">
             <div className="bg-gradient-to-r from-agri-800 to-agri-700 text-white rounded-3xl p-5 shadow-lg space-y-1">
               <span className="text-xs uppercase font-extrabold tracking-wider text-agri-200">
-                KẾT QUẢ SẢN XUẤT CỦA BÁC
+                {currentRole === 'R05' ? 'KẾT QUẢ SẢN XUẤT TỔ' : 'KẾT QUẢ SẢN XUẤT CỦA BÁC'}
               </span>
               <h3 className="text-2xl font-extrabold">{currentUser.name}</h3>
               <p className="text-xs text-agri-100">{currentUser.team} • Vụ Xuân 2026</p>

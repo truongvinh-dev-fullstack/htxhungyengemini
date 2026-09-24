@@ -23,6 +23,10 @@ export const API_CONFIG = {
       BASE: '/harvest-lots',
       BY_ID: (id: string) => `/harvest-lots/${id}`,
     },
+    PROCESSING: {
+      BASE: '/processing-lots',
+      BY_ID: (id: string) => `/processing-lots/${id}`,
+    },
     PACKAGE: {
       BASE: '/packaged-products',
       BY_ID: (id: string) => `/packaged-products/${id}`,

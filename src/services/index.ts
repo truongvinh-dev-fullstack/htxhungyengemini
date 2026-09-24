@@ -3,6 +3,7 @@ export * from './authService';
 export * from './diaryService';
 export * from './zoneService';
 export * from './harvestService';
+export * from './processingService';
 export * from './packageService';
 export * from './warehouseService';
 export * from './orderService';
