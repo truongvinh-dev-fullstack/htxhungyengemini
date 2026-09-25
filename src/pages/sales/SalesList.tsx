@@ -4,15 +4,26 @@ import { Header } from '../../components/Header';
 import { SalesOrder } from '../../types';
 
 export const SalesList: React.FC = () => {
-  const { orders, navigateTo } = useApp();
+  const { orders, navigateTo, currentRole, currentUser } = useApp();
 
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
+  // Phân quyền dữ liệu đơn hàng (SRS Mục 7: R06 chỉ xem đơn của hộ mình; R04/R02 xem toàn bộ đơn HTX)
+  const scopedOrders = orders.filter((o) => {
+    if (currentRole === 'R06') {
+      return o.sellerId === currentUser.id || o.sellerName === currentUser.name;
+    }
+    return true;
+  });
+
+  // Doanh thu thực tế chỉ ghi nhận các đơn đã "Hoàn thành"
+  const completedOrders = scopedOrders.filter((o) => o.status === 'Hoàn thành');
+  const totalRevenue = completedOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const pendingOrders = scopedOrders.filter((o) => o.status === 'Mới' || o.status === 'Đang giao');
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
-        title="Bán hàng / Đơn hàng"
-        voiceText="Đây là danh sách các đơn đặt hàng nông sản của bác. Bác có thể xem tiến độ giao hàng hoặc tạo đơn hàng mới."
+        title={currentRole === 'R06' ? 'Đơn hàng của hộ tôi' : 'Quản lý Bán hàng & Đơn'}
+        voiceText={`Danh sách đơn bán nông sản ${currentRole === 'R06' ? 'của hộ gia đình bác' : 'của Hợp tác xã'}. Tổng doanh thu thực thu: ${totalRevenue.toLocaleString()} đồng.`}
       />
 
       <div className="p-4 space-y-4">
@@ -20,7 +31,7 @@ export const SalesList: React.FC = () => {
         <div className="bg-gradient-to-r from-purple-800 to-indigo-800 text-white rounded-3xl p-5 shadow-lg space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase font-extrabold tracking-wider text-purple-200">
-              DOANH THU BÁN NÔNG SẢN THÁNG
+              DOANH THU ĐÃ THỰC THU (HOÀN THÀNH)
             </span>
             <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-bold">Tháng 09/2026</span>
           </div>
@@ -30,8 +41,8 @@ export const SalesList: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-between text-xs text-purple-100 pt-1 border-t border-white/20">
-            <span>Tổng số: <strong>{orders.length} đơn hàng</strong></span>
-            <span>Hoàn thành: <strong>{orders.filter((o) => o.status === 'Hoàn thành').length}</strong></span>
+            <span>Tổng số: <strong>{scopedOrders.length} đơn</strong> ({pendingOrders.length} đang xử lý)</span>
+            <span>Đã giao xong: <strong>{completedOrders.length} đơn</strong></span>
           </div>
         </div>
 
@@ -49,7 +60,7 @@ export const SalesList: React.FC = () => {
 
         {/* List of Orders */}
         <div className="space-y-3">
-          {orders.map((order) => (
+          {scopedOrders.map((order) => (
             <div
               key={order.id}
               onClick={() => navigateTo('sales_detail', { order })}
@@ -72,6 +83,8 @@ export const SalesList: React.FC = () => {
                       ? 'bg-emerald-100 text-emerald-800'
                       : order.status === 'Đang giao'
                       ? 'bg-blue-100 text-blue-800'
+                      : order.status === 'Đã hủy'
+                      ? 'bg-red-100 text-red-800'
                       : 'bg-amber-100 text-amber-800'
                   }`}
                 >

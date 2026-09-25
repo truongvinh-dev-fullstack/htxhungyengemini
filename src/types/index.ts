@@ -48,6 +48,7 @@ export interface FarmZone {
   id: string;
   htxId: HTXId;
   ownerId: string;
+  ownerName?: string;
   name: string; // VD: Thửa Đầm Bông
   variety: string; // Giống cây/vật nuôi: Bắc Thơm số 7, Gà thuần F1...
   season: string; // Vụ Xuân 2026
@@ -137,7 +138,9 @@ export interface InventoryItem {
   category: 'Giong' | 'PhanBon' | 'ThuocBVTV' | 'ThucAn' | 'BaoBi';
   stock: number;
   unit: string;
+  unitPrice: number;
   minStockAlert: number;
+  description?: string;
 }
 
 export interface StockTransaction {
@@ -146,9 +149,12 @@ export interface StockTransaction {
   type: 'import' | 'export';
   htxId: HTXId;
   date: string;
+  itemId?: string;
   itemName: string;
   quantity: number;
   unit: string;
+  unitPrice?: number;
+  totalAmount?: number;
   recipientOrSupplier: string;
   notes: string;
 }
@@ -157,14 +163,18 @@ export interface SalesOrder {
   id: string;
   code: string;
   htxId: HTXId;
+  sellerId?: string;
+  sellerName?: string;
   customerName: string;
   customerPhone: string;
+  productId?: string;
   productName: string;
   quantity: number;
   unit: string;
   pricePerUnit: number;
   totalAmount: number;
-  status: 'Mới' | 'Đang giao' | 'Hoàn thành';
+  status: 'Mới' | 'Đang giao' | 'Hoàn thành' | 'Đã hủy';
+  cancelReason?: string;
   date: string;
   invoiceNumber?: string;
 }
@@ -175,18 +185,25 @@ export interface MemberRequest {
   phone: string;
   cccd: string;
   htxId: HTXId;
+  team?: string;
   village: string;
   applyDate: string;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason?: string;
+  approvedBy?: string;
+  approvedAt?: string;
 }
 
 export interface AppNotification {
   id: string;
+  htxId?: HTXId;
+  userId?: string;
   title: string;
   summary: string;
   content: string;
   date: string;
-  type: 'reminder' | 'system' | 'approval';
+  type: 'reminder' | 'system' | 'approval' | 'alert' | 'order';
   isRead: boolean;
+  actionScreen?: string;
+  actionLabel?: string;
 }

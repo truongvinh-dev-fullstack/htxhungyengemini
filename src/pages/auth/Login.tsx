@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 
 export const Login: React.FC = () => {
-  const { loginWithZaloPhone, speakText } = useApp();
+  const { loginWithZaloPhone, speakText, navigateTo } = useApp();
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [selectedPhone, setSelectedPhone] = useState('0978 123 456');
   const [customPhone, setCustomPhone] = useState('');
-  const [unregisteredError, setUnregisteredError] = useState<{
+  const [authError, setAuthError] = useState<{
     phone: string;
+    reason: 'NOT_REGISTERED' | 'PENDING' | 'REJECTED' | 'INACTIVE';
+    name?: string;
   } | null>(null);
 
   const sampleAccounts = [
@@ -87,7 +89,7 @@ export const Login: React.FC = () => {
       name: 'Khách chưa đăng ký',
       roleCode: 'None',
       role: 'Chưa có hồ sơ',
-      desc: 'Thử nghiệm cảnh báo SĐT chưa có trong HTX',
+      desc: 'Thử nghiệm luồng chuyển sang Đăng ký thành viên',
       htx: 'Chưa tham gia HTX nào',
       tag: 'Chưa đăng ký',
       color: 'bg-red-100 text-red-900 border-red-300',
@@ -95,7 +97,7 @@ export const Login: React.FC = () => {
   ];
 
   const handleOpenZaloAuth = () => {
-    setUnregisteredError(null);
+    setAuthError(null);
     setShowPermissionModal(true);
   };
 
@@ -105,69 +107,129 @@ export const Login: React.FC = () => {
 
     const result = loginWithZaloPhone(finalPhone);
     if (!result.success) {
-      setUnregisteredError({ phone: finalPhone });
-      speakText(
-        `Số điện thoại ${finalPhone} chưa được đăng ký trong danh sách thành viên của Hợp tác xã. Bà con vui lòng liên hệ Ban quản trị để đăng ký.`
-      );
+      const reason = (result.reason as any) || 'NOT_REGISTERED';
+      setAuthError({
+        phone: finalPhone,
+        reason,
+        name: result.user?.name,
+      });
+
+      if (reason === 'PENDING') {
+        speakText('Hồ sơ của bác đang chờ Ban quản trị phê duyệt. Vui lòng liên hệ HTX để được hỗ trợ.');
+      } else if (reason === 'REJECTED') {
+        speakText('Hồ sơ đăng ký của bác đã bị từ chối. Vui lòng liên hệ Ban quản trị để biết thêm chi tiết.');
+      } else if (reason === 'INACTIVE') {
+        speakText('Tài khoản của bác đang tạm ngừng hoạt động. Vui lòng liên hệ Ban quản trị HTX.');
+      } else {
+        speakText(`Số điện thoại ${finalPhone} chưa được đăng ký trong HTX. Bác hãy bấm Đăng ký thành viên mới nhé.`);
+      }
     } else {
       speakText(`Chào mừng bác ${result.user?.name} đã đăng nhập thành công qua Zalo!`);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-agri-800 via-agri-700 to-agri-900 text-white flex flex-col justify-between p-4 safe-bottom">
+    <div className="min-h-screen bg-gradient-to-b from-agri-800 via-agri-700 to-agri-900 text-white flex flex-col p-4 safe-bottom">
       {/* Brand Header */}
-      <div className="pt-10 pb-4 text-center">
-        <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-white shadow-2xl text-5xl mb-4 border-4 border-amber-300">
+      <div className="pt-6 pb-2 text-center">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white shadow-2xl text-4xl mb-2.5 border-4 border-amber-300">
           🌾
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight">HỢP TÁC XÃ HƯNG YÊN</h1>
-        <p className="text-base text-agri-100 font-medium mt-1">
+        <p className="text-sm text-agri-100 font-medium mt-0.5">
           Cơ sở dữ liệu sản xuất & Truy xuất nguồn gốc
         </p>
-        <div className="inline-block bg-white/20 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-amber-200 mt-2">
+        <div className="inline-block bg-white/20 backdrop-blur px-3 py-0.5 rounded-full text-xs font-bold text-amber-200 mt-1.5">
           An Ninh (Lúa) • Đông Tảo (Gà) • Quyết Thắng (Nhãn/Cá)
         </div>
       </div>
 
       {/* Main Login Card - Pure Zalo */}
-      <div className="bg-white text-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">
-        {unregisteredError ? (
-          /* Error Notification when phone is not registered in HTX */
+      <div className="bg-white text-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 mt-[78px] mb-4">
+        {authError ? (
+          /* Error / Status Notification per SRS CN-3.1.1 */
           <div className="space-y-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-3xl mx-auto shadow-inner animate-bounce">
-              ⚠️
-            </div>
+            {authError.reason === 'PENDING' ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-3xl mx-auto shadow-inner animate-pulse">
+                  ⏳
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-amber-900 leading-tight">
+                    Hồ sơ của bác đang chờ duyệt!
+                  </h2>
+                  <p className="text-sm font-bold text-slate-700 mt-1">
+                    {authError.name ? `Thành viên: ${authError.name}` : `SĐT: ${authError.phone}`}
+                  </p>
+                </div>
+                <div className="p-4 bg-amber-50 rounded-2xl border-2 border-amber-200 text-left text-sm text-amber-950 space-y-2">
+                  <p>
+                    Yêu cầu đăng ký tham gia Hợp tác xã đã được gửi tới Tổ trưởng và Ban Quản trị. Vui lòng chờ phê duyệt để bắt đầu sử dụng đầy đủ chức năng.
+                  </p>
+                  <p className="font-semibold text-xs text-amber-800">
+                    Liên hệ trực tiếp BQT nếu cần duyệt gấp: <a href="tel:0912345678" className="text-blue-700 underline font-bold">0912.345.678</a>
+                  </p>
+                </div>
+              </>
+            ) : authError.reason === 'REJECTED' || authError.reason === 'INACTIVE' ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
+                  🚫
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-red-900 leading-tight">
+                    {authError.reason === 'REJECTED' ? 'Hồ sơ đã bị từ chối' : 'Tài khoản đã ngừng hoạt động'}
+                  </h2>
+                  <p className="text-sm font-bold text-slate-700 mt-1">SĐT: {authError.phone}</p>
+                </div>
+                <div className="p-4 bg-red-50 rounded-2xl border-2 border-red-200 text-left text-sm text-red-950 space-y-2">
+                  <p>
+                    {authError.reason === 'REJECTED'
+                      ? 'Rất tiếc hồ sơ đăng ký tham gia HTX của bác chưa được phê duyệt. Vui lòng liên hệ BQT để được hỗ trợ kiểm tra lại thông tin.'
+                      : 'Tài khoản thành viên này hiện đang ở trạng thái ngừng hoạt động. Vui lòng liên hệ Ban Quản trị HTX để kích hoạt lại.'}
+                  </p>
+                </div>
+              </>
+            ) : (
+              /* NOT_REGISTERED */
+              <>
+                <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-3xl mx-auto shadow-inner animate-bounce">
+                  ⚠️
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-900 leading-tight">
+                    Số điện thoại chưa có trong HTX!
+                  </h2>
+                  <p className="text-base font-bold text-slate-900 mt-1 font-mono bg-slate-100 py-1.5 px-3 rounded-xl inline-block">
+                    {authError.phone}
+                  </p>
+                </div>
+                <div className="p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-300 text-left text-sm text-emerald-950 space-y-2">
+                  <p className="font-extrabold text-emerald-900">
+                    Bác là hộ nông dân mới muốn tham gia HTX?
+                  </p>
+                  <p className="text-xs text-emerald-800 leading-relaxed font-medium">
+                    Bác có thể gửi thông tin đăng ký trực tuyến ngay tại đây để Ban Quản trị và Tổ trưởng xét duyệt vào danh sách xã viên.
+                  </p>
+                </div>
 
-            <div>
-              <h2 className="text-xl font-extrabold text-red-900 leading-tight">
-                Số điện thoại chưa đăng ký ở HTX!
-              </h2>
-              <p className="text-base font-bold text-slate-900 mt-1 font-mono bg-slate-100 py-1.5 px-3 rounded-xl inline-block">
-                {unregisteredError.phone}
-              </p>
-            </div>
-
-            <div className="p-4 bg-red-50 rounded-2xl border-2 border-red-200 text-left text-sm text-red-950 space-y-2 leading-relaxed">
-              <p>
-                Số điện thoại trên chưa có trong danh bạ thành viên của bất kỳ Hợp tác xã nào trong hệ thống.
-              </p>
-              <p className="font-medium text-xs text-red-800">
-                Bà con vui lòng liên hệ trực tiếp với Ban Quản trị HTX tại địa bàn để được bổ sung vào danh sách xã viên:
-              </p>
-              <div className="text-xs space-y-1 font-bold pt-1 border-t border-red-200 text-slate-800">
-                <div>• HTX An Ninh (Tiền Lữ): <a href="tel:0912345678" className="text-blue-700 underline">0912.345.678</a></div>
-                <div>• HTX Đông Tảo (Khoái Châu): <a href="tel:0988765432" className="text-blue-700 underline">0988.765.432</a></div>
-                <div>• HTX Quyết Thắng (Tân Hưng): <a href="tel:0904555888" className="text-blue-700 underline">0904.555.888</a></div>
-              </div>
-            </div>
+                {/* CN-3.1.5: Navigation to Register Form */}
+                <button
+                  onClick={() => navigateTo('auth_register')}
+                  className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-lg font-extrabold shadow-lg shadow-emerald-700/30 flex items-center justify-center gap-2"
+                >
+                  <span>📝</span>
+                  <span>ĐĂNG KÝ THÀNH VIÊN MỚI NGAY</span>
+                </button>
+              </>
+            )}
 
             <button
               onClick={() => {
-                setUnregisteredError(null);
+                setAuthError(null);
                 setShowPermissionModal(true);
               }}
-              className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-lg font-bold shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-sm font-bold flex items-center justify-center gap-2"
             >
               <span>🔄</span>
               <span>Thử lại với số điện thoại khác</span>
@@ -175,8 +237,8 @@ export const Login: React.FC = () => {
           </div>
         ) : (
           /* Normal Zalo Login State */
-          <div className="space-y-5">
-            <div className="text-center space-y-2 py-2">
+          <div className="space-y-4">
+            <div className="text-center space-y-2 py-1">
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-blue-50 text-blue-600 text-3xl mb-1">
                 💬
               </div>
@@ -188,7 +250,7 @@ export const Login: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-sm text-emerald-950 space-y-1.5">
+            <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-sm text-emerald-950 space-y-1.5">
               <div className="font-extrabold text-emerald-900 flex items-center gap-1.5">
                 <span>✓</span> Tiện lợi cho người cao tuổi:
               </div>
@@ -205,11 +267,23 @@ export const Login: React.FC = () => {
               <span className="text-2xl">⚡</span>
               <span>ĐĂNG NHẬP BẰNG ZALO</span>
             </button>
+
+            {/* CN-3.1.5: Quick link for new members */}
+            <div className="pt-2 text-center border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => navigateTo('auth_register')}
+                className="text-sm font-extrabold text-emerald-700 hover:text-emerald-800 flex items-center justify-center gap-1.5 mx-auto active:scale-95"
+              >
+                <span>Chưa có hồ sơ xã viên?</span>
+                <span className="underline">Đăng ký tham gia HTX tại đây ➜</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      <div className="text-center text-xs text-agri-200 py-2">
+      <div className="text-center text-xs text-agri-200 py-3 mt-auto">
         Hệ thống chuyển đổi số Hợp tác xã Nông nghiệp tỉnh Hưng Yên v1.1
       </div>
 

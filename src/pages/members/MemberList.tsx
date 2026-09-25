@@ -4,9 +4,16 @@ import { Header } from '../../components/Header';
 import { UserProfile } from '../../types';
 
 export const MemberList: React.FC = () => {
-  const { members, memberRequests, navigateTo, currentRole } = useApp();
+  const { members, memberRequests, navigateTo, currentRole, currentHTX, currentUser } = useApp();
 
-  const pendingCount = memberRequests.filter((r) => r.status === 'pending').length;
+  const htxMembers = members.filter((m) => !m.htxId || m.htxId === currentHTX.id);
+  const displayMembers = currentRole === 'R05' && currentUser.team
+    ? htxMembers.filter((m) => m.team === currentUser.team || m.team?.includes(currentUser.team) || currentUser.team?.includes(m.team))
+    : htxMembers;
+
+  const pendingCount = memberRequests.filter(
+    (r) => (!r.htxId || r.htxId === currentHTX.id) && r.status === 'pending'
+  ).length;
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
@@ -45,13 +52,25 @@ export const MemberList: React.FC = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-lg font-bold text-slate-800">Thành viên trong tổ</h3>
-            <span className="text-xs text-slate-500 font-semibold">{members.length} hộ</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-semibold">{displayMembers.length} hộ</span>
+              {(currentRole === 'R05' || currentRole === 'R02') && (
+                <button
+                  onClick={() => navigateTo('member_add')}
+                  className="py-1.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow"
+                >
+                  <span>➕</span>
+                  <span>Thêm thành viên</span>
+                </button>
+              )}
+            </div>
           </div>
 
-          {members.map((m) => (
+          {displayMembers.map((m) => (
             <div
               key={m.id}
-              className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm flex items-center justify-between gap-3"
+              onClick={() => navigateTo('member_detail', { member: m })}
+              className="bg-white rounded-3xl p-4 border-2 border-slate-200 hover:border-emerald-500 active:scale-[0.98] transition-all shadow-sm flex items-center justify-between gap-3 cursor-pointer"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <img
@@ -70,13 +89,17 @@ export const MemberList: React.FC = () => {
                 </div>
               </div>
 
-              <a
-                href={`tel:${m.phone.replace(/\s+/g, '')}`}
-                className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl flex-shrink-0 shadow-sm"
-                title="Gọi điện thoại"
-              >
-                📞
-              </a>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <a
+                  href={`tel:${m.phone.replace(/\s+/g, '')}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-lg shadow-sm"
+                  title="Gọi điện thoại"
+                >
+                  📞
+                </a>
+                <span className="text-slate-400 text-xs font-bold">➜</span>
+              </div>
             </div>
           ))}
         </div>

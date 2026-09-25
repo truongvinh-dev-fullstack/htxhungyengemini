@@ -1,16 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 import { DiaryEntry } from '../../types';
 
 export const DiaryList: React.FC = () => {
-  const { diaries, navigateTo, currentHTX } = useApp();
+  const { diaries, farmZones, navigateTo, currentHTX, currentRole, currentUser } = useApp();
+
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
+  const [onlyMine, setOnlyMine] = useState<boolean>(currentRole === 'R06');
+
+  // Lọc nhật ký theo vai trò và thửa ruộng (SRS Mục 7: R06 chỉ xem nhật ký của mình)
+  const filteredDiaries = diaries.filter((entry) => {
+    // 1. Lọc theo thửa ruộng
+    if (selectedZoneId !== 'all' && entry.farmZoneId !== selectedZoneId) {
+      return false;
+    }
+
+    // 2. R06 bắt buộc chỉ xem nhật ký do chính hộ mình ghi
+    if (currentRole === 'R06') {
+      if (entry.createdBy !== currentUser.name) {
+        return false;
+      }
+    } else if (onlyMine && entry.createdBy !== currentUser.name) {
+      return false;
+    }
+
+    return true;
+  });
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
         title="Sổ nhật ký đồng ruộng"
-        voiceText="Đây là danh sách nhật ký đồng ruộng của bác. Bác có thể xem lại các công việc đã làm hoặc bấm nút Ghi nhật ký mới màu xanh ở góc dưới."
+        voiceText="Đây là danh sách nhật ký đồng ruộng. Bác có thể lọc theo từng thửa ruộng hoặc bấm nút Ghi nhật ký mới để ghi chép công việc nhé."
       />
 
       <div className="p-4 space-y-4">
@@ -31,23 +53,70 @@ export const DiaryList: React.FC = () => {
           </button>
         </div>
 
+        {/* CN-3.5.1: Bộ lọc Thửa ruộng & Phạm vi hiển thị */}
+        <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-3">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+              🌾 Lọc theo thửa ruộng / vùng nuôi:
+            </label>
+            <select
+              value={selectedZoneId}
+              onChange={(e) => setSelectedZoneId(e.target.value)}
+              className="w-full h-12 px-3 rounded-2xl border-2 border-slate-200 text-sm font-bold text-slate-800 bg-slate-50 focus:border-emerald-600 focus:outline-none"
+            >
+              <option value="all">Tất cả các thửa ruộng / vùng nuôi</option>
+              {farmZones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name} ({z.variety})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Phạm vi xem theo vai trò */}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+            <span className="text-xs font-bold text-slate-700">
+              {currentRole === 'R06' ? 'Nhật ký của hộ tôi' : 'Chỉ xem nhật ký do tôi ghi'}
+            </span>
+            {currentRole === 'R06' ? (
+              <span className="text-[11px] font-extrabold bg-emerald-100 text-emerald-900 px-2.5 py-1 rounded-full border border-emerald-300">
+                🔒 Cố định hộ {currentUser.name}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setOnlyMine(!onlyMine)}
+                className={`w-12 h-7 rounded-full transition-colors relative p-0.5 ${
+                  onlyMine ? 'bg-emerald-600' : 'bg-slate-300'
+                }`}
+              >
+                <div
+                  className={`w-6 h-6 rounded-full bg-white shadow-md transform transition-transform ${
+                    onlyMine ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Timeline list */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-lg font-bold text-slate-800">Lịch sử công việc</h3>
-            <span className="text-xs text-slate-500 font-semibold">{diaries.length} bản ghi</span>
+            <span className="text-xs text-slate-500 font-semibold">{filteredDiaries.length} bản ghi</span>
           </div>
 
-          {diaries.length === 0 ? (
+          {filteredDiaries.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 text-center space-y-3 border border-slate-200">
               <span className="text-5xl">🌾</span>
-              <h4 className="text-xl font-bold text-slate-800">Chưa có nhật ký nào</h4>
+              <h4 className="text-xl font-bold text-slate-800">Không tìm thấy nhật ký phù hợp</h4>
               <p className="text-sm text-slate-500">
-                Bác hãy bấm nút "Ghi mới" ở trên để ghi lại công việc chăm sóc đồng ruộng nhé.
+                Bác hãy thử chọn &quot;Tất cả các thửa ruộng&quot; hoặc bấm nút &quot;Ghi mới&quot; ở trên nhé.
               </p>
             </div>
           ) : (
-            diaries.map((entry) => (
+            filteredDiaries.map((entry) => (
               <div
                 key={entry.id}
                 onClick={() => navigateTo('diary_detail', { entry })}

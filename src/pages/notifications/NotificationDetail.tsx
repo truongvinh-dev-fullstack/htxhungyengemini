@@ -42,15 +42,24 @@ export const NotificationDetail: React.FC = () => {
             <p>{item.content}</p>
           </div>
 
-          {item.type === 'reminder' && (
+          {/* Action button */}
+          {item.actionScreen ? (
+            <button
+              onClick={() => navigateTo(item.actionScreen!)}
+              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-extrabold text-lg shadow-md flex items-center justify-center gap-2 mt-4"
+            >
+              <span>➜</span>
+              <span>{item.actionLabel || 'Xem chi tiết'}</span>
+            </button>
+          ) : item.type === 'reminder' ? (
             <button
               onClick={() => navigateTo('diary_add')}
-              className="w-full py-4 rounded-2xl bg-emerald-700 text-white font-extrabold text-lg shadow-md flex items-center justify-center gap-2 mt-4"
+              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-extrabold text-lg shadow-md flex items-center justify-center gap-2 mt-4"
             >
               <span>📝</span>
               <span>Ghi nhật ký ngay bây giờ</span>
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

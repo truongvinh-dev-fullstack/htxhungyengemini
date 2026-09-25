@@ -30,17 +30,46 @@ import { TraceScanner } from './trace/TraceScanner';
 import { TraceResult } from './trace/TraceResult';
 import { MemberList } from './members/MemberList';
 import { MemberApproval } from './members/MemberApproval';
+import { MemberDetail } from './members/MemberDetail';
+import { MemberAdd } from './members/MemberAdd';
 import { InventoryList } from './inventory/InventoryList';
+import { InventoryDetail } from './inventory/InventoryDetail';
+import { InventoryAdd } from './inventory/InventoryAdd';
 import { StockTransactionAdd } from './inventory/StockTransactionAdd';
+import { StockTransactionDetail } from './inventory/StockTransactionDetail';
 import { DashboardPage } from './dashboard/DashboardPage';
 import { NotificationList } from './notifications/NotificationList';
 import { NotificationDetail } from './notifications/NotificationDetail';
 import { ProfilePage } from './profile/ProfilePage';
+import { canAccessScreen } from '../utils/permissions';
 
 export const MainApp: React.FC = () => {
-  const { currentScreen, isLoggedIn } = useApp();
+  const { currentScreen, isLoggedIn, currentRole, navigateTo } = useApp();
 
   const renderScreen = () => {
+    // Kiểm tra quyền hạn màn hình theo vai trò (SRS Mục 7)
+    if (isLoggedIn && !canAccessScreen(currentRole, currentScreen)) {
+      return (
+        <div className="p-6 bg-slate-50 min-h-screen flex flex-col items-center justify-center text-center space-y-4">
+          <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center text-4xl shadow-inner border-2 border-red-200">
+            🚫
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-xl font-black text-slate-900">Không có quyền truy cập</h3>
+            <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
+              Tài khoản của bạn với vai trò <strong>{currentRole}</strong> chưa được cấp quyền truy cập chức năng này theo quy định phân quyền HTX (SRS Mục 7).
+            </p>
+          </div>
+          <button
+            onClick={() => navigateTo('home')}
+            className="px-6 py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-sm rounded-2xl shadow-md active:scale-95 transition-all"
+          >
+            Quay về Trang chủ
+          </button>
+        </div>
+      );
+    }
+
     switch (currentScreen) {
       case 'auth_login':
         return <Login />;
@@ -90,12 +119,22 @@ export const MainApp: React.FC = () => {
         return <TraceResult />;
       case 'members_list':
         return <MemberList />;
+      case 'member_detail':
+        return <MemberDetail />;
+      case 'member_add':
+        return <MemberAdd />;
       case 'members_approval':
         return <MemberApproval />;
       case 'inventory_list':
         return <InventoryList />;
+      case 'inventory_detail':
+        return <InventoryDetail />;
+      case 'inventory_add':
+        return <InventoryAdd />;
       case 'inventory_tx':
         return <StockTransactionAdd />;
+      case 'inventory_tx_detail':
+        return <StockTransactionDetail />;
       case 'dashboard':
         return <DashboardPage />;
       case 'notifications':

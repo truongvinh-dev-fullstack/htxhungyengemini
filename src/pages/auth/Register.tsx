@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { HTXId } from '../../types';
 
 export const Register: React.FC = () => {
-  const { navigateTo } = useApp();
+  const { navigateTo, addMemberRequest, speakText } = useApp();
   const [htxId, setHtxId] = useState<HTXId>('anninh');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -13,6 +13,20 @@ export const Register: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!fullName.trim() || !phone.trim() || !cccd.trim()) {
+      alert('Vui lòng điền đầy đủ các thông tin bắt buộc (*).');
+      return;
+    }
+
+    addMemberRequest({
+      name: fullName.trim(),
+      phone: phone.trim(),
+      cccd: cccd.trim(),
+      htxId,
+      village: village.trim() || 'Thôn xã thuộc địa bàn HTX',
+    });
+
+    speakText(`Đã gửi thành công hồ sơ đăng ký của bác ${fullName}. Vui lòng chờ Ban quản trị phê duyệt.`);
     setIsSubmitted(true);
   };
 

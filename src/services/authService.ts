@@ -16,7 +16,7 @@ export const authService = {
     if (API_CONFIG.USE_MOCK) {
       // Mock Data Fallback
       const normalizedPhone = phone.replace(/\s+/g, '');
-      const user = DEMO_USERS.find(u => u.phone.replace(/\s+/g, '') === normalizedPhone);
+      const user = Object.values(DEMO_USERS).find(u => u.phone.replace(/\s+/g, '') === normalizedPhone);
       if (user) {
         localStorage.setItem('hungyen_access_token', 'mock_token_' + user.id);
         localStorage.setItem('hungyen_user_profile', JSON.stringify(user));

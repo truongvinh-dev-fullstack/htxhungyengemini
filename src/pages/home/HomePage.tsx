@@ -289,7 +289,7 @@ export const HomePage: React.FC = () => {
           },
         ];
 
-      case 'R06': // HỘ NÔNG DÂN: Việc hôm nay, thửa/chuồng/ao của mình, nhật ký, thu hoạch, vật tư được cấp, thông báo
+      case 'R06': // HỘ NÔNG DÂN: Việc hôm nay, thửa/chuồng/ao của mình, nhật ký, thu hoạch, bán nông sản, đóng gói, vật tư được cấp, thông báo
       default:
         return [
           {
@@ -318,6 +318,24 @@ export const HomePage: React.FC = () => {
             color: 'bg-orange-100 text-orange-800',
             border: 'hover:border-orange-600',
             screen: 'harvest_list',
+          },
+          {
+            id: 'sales',
+            title: 'Bán nông sản của hộ',
+            subtitle: 'Tạo đơn bán cho thương lái, khách lẻ',
+            icon: '🛒',
+            color: 'bg-purple-100 text-purple-800',
+            border: 'hover:border-purple-600',
+            screen: 'sales_list',
+          },
+          {
+            id: 'packaging',
+            title: 'Đóng gói & Tem QR',
+            subtitle: 'Dán tem QR truy xuất nông sản',
+            icon: '📦',
+            color: 'bg-indigo-100 text-indigo-800',
+            border: 'hover:border-indigo-600',
+            screen: 'packaging_list',
           },
           {
             id: 'inventory',

@@ -5,7 +5,7 @@ import { FarmZone } from '../../types';
 import { SEASONS_BY_HTX } from '../../mock/data';
 
 export const FarmDetail: React.FC = () => {
-  const { screenParams, goBack, navigateTo, currentHTX, updateFarmZoneSeason, speakText, farmZones } = useApp();
+  const { screenParams, goBack, navigateTo, currentHTX, updateFarmZoneSeason, updateFarmZone, deleteFarmZone, speakText, farmZones } = useApp();
   const initialZone: FarmZone = screenParams?.zone;
 
   // Lấy dữ liệu mới nhất của vùng từ AppContext state theo ID
@@ -13,6 +13,15 @@ export const FarmDetail: React.FC = () => {
 
   // Modal đổi mùa vụ mới cho thửa ruộng này
   const [showSeasonModal, setShowSeasonModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // State cho edit thông tin thửa
+  const [editName, setEditName] = useState(currentZone?.name || '');
+  const [editArea, setEditArea] = useState(currentZone?.areaOrQuantity || '');
+  const [editStatus, setEditStatus] = useState(currentZone?.status || 'Đang canh tác');
+  const [editNotes, setEditNotes] = useState(currentZone?.notes || '');
 
   const availableSeasons = (SEASONS_BY_HTX[currentHTX.id] || []).filter((s) => s.id !== 'all');
   const [newSeasonName, setNewSeasonName] = useState(
@@ -55,6 +64,22 @@ export const FarmDetail: React.FC = () => {
 
     speakText(`Đã kích hoạt ${newSeasonName} cho thửa ruộng ${currentZone.name}. Mùa vụ trước đã được lưu vào lịch sử.`);
     setShowSeasonModal(false);
+  };
+
+  const handleSaveEditZone = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) {
+      alert('Vui lòng nhập tên thửa ruộng');
+      return;
+    }
+    updateFarmZone(currentZone.id, {
+      name: editName.trim(),
+      areaOrQuantity: editArea.trim() || currentZone.areaOrQuantity,
+      status: editStatus,
+      notes: editNotes.trim(),
+    });
+    speakText('Đã cập nhật thông tin thửa ruộng thành công');
+    setShowEditModal(false);
   };
 
   return (
@@ -221,6 +246,22 @@ export const FarmDetail: React.FC = () => {
 
         {/* Các nút hành động */}
         <div className="space-y-2.5 pt-1">
+          {/* Nút: Sửa thông tin thửa ruộng */}
+          <button
+            type="button"
+            onClick={() => {
+              setEditName(currentZone.name);
+              setEditArea(currentZone.areaOrQuantity);
+              setEditStatus(currentZone.status);
+              setEditNotes(currentZone.notes);
+              setShowEditModal(true);
+            }}
+            className="w-full py-3.5 rounded-2xl bg-white hover:bg-slate-50 border-2 border-slate-300 text-slate-800 text-base font-extrabold shadow-xs flex items-center justify-center gap-2"
+          >
+            <span>✏️</span>
+            <span>CHỈNH SỬA THÔNG TIN THỬA RUỘNG</span>
+          </button>
+
           {/* Nút 1: Đổi / Bắt đầu mùa vụ mới cho thửa ruộng này */}
           <button
             type="button"
@@ -239,6 +280,19 @@ export const FarmDetail: React.FC = () => {
           >
             <span>📝</span>
             <span>Ghi nhật ký cho thửa ruộng này</span>
+          </button>
+
+          {/* Nút 3: Xóa hoặc chuyển nghỉ vụ */}
+          <button
+            type="button"
+            onClick={() => {
+              setDeleteError(null);
+              setShowDeleteModal(true);
+            }}
+            className="w-full py-3.5 rounded-2xl bg-red-50 hover:bg-red-100 active:scale-95 text-red-700 text-sm font-extrabold flex items-center justify-center gap-2 border border-red-200 transition-all"
+          >
+            <span>🗑️</span>
+            <span>XÓA THỬA RUỘNG NÀY</span>
           </button>
         </div>
       </div>
@@ -355,6 +409,152 @@ export const FarmDetail: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CHỈNH SỬA THÔNG TIN THỬA RUỘNG */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-xl font-black text-slate-900">Sửa thông tin thửa ruộng</h3>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Mã thửa: <strong>{currentZone.id.toUpperCase()}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="w-9 h-9 rounded-full bg-slate-100 active:bg-slate-200 text-slate-600 font-bold flex items-center justify-center text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditZone} className="space-y-4">
+              <div>
+                <label className="block text-sm font-extrabold text-slate-800 mb-1">
+                  Tên thửa ruộng / vùng nuôi:
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                  className="w-full h-12 px-3 rounded-2xl border-2 border-slate-300 text-sm font-bold text-slate-900 bg-slate-50 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-extrabold text-slate-800 mb-1">
+                  Diện tích / Quy mô đàn:
+                </label>
+                <input
+                  type="text"
+                  value={editArea}
+                  onChange={(e) => setEditArea(e.target.value)}
+                  placeholder="VD: 1.5 ha, 500 con..."
+                  className="w-full h-12 px-3 rounded-2xl border-2 border-slate-300 text-sm font-bold text-slate-900 bg-slate-50 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-extrabold text-slate-800 mb-1">
+                  Trạng thái thửa ruộng:
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as any)}
+                  className="w-full h-12 px-3 rounded-2xl border-2 border-slate-300 text-sm font-bold text-slate-900 bg-slate-50 focus:border-blue-600 focus:outline-none"
+                >
+                  <option value="Đang canh tác">Đang canh tác</option>
+                  <option value="Sắp thu hoạch">Sắp thu hoạch</option>
+                  <option value="Đã thu hoạch">Đã thu hoạch</option>
+                  <option value="Nghỉ vụ">Nghỉ vụ</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-extrabold text-slate-800 mb-1">
+                  Ghi chú kỹ thuật thửa:
+                </label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={3}
+                  className="w-full p-3 rounded-2xl border-2 border-slate-300 text-sm font-semibold text-slate-900 bg-slate-50 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-3 rounded-2xl bg-slate-100 active:bg-slate-200 text-slate-700 font-bold text-sm"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold text-sm shadow-md"
+                >
+                  Lưu thay đổi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XÁC NHẬN XÓA THỬA RUỘNG */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 shadow-2xl">
+            <div className="text-center space-y-2">
+              <span className="text-4xl block">⚠️</span>
+              <h3 className="text-lg font-black text-slate-900">Xác nhận xóa vùng sản xuất?</h3>
+              <p className="text-xs text-slate-600">
+                Bác có chắc chắn muốn xóa thửa <strong>{currentZone.name}</strong> không?
+              </p>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-800 font-bold leading-relaxed">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteError(null);
+                }}
+                className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold text-sm"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const res = deleteFarmZone(currentZone.id);
+                  if (!res.success) {
+                    setDeleteError(res.message);
+                    speakText(res.message);
+                  } else {
+                    speakText('Đã xóa vùng sản xuất thành công.');
+                    setShowDeleteModal(false);
+                    goBack();
+                  }
+                }}
+                className="flex-1 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm shadow"
+              >
+                Xác nhận xóa
+              </button>
+            </div>
           </div>
         </div>
       )}

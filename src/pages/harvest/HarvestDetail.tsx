@@ -4,7 +4,7 @@ import { Header } from '../../components/Header';
 import { HarvestLot } from '../../types';
 
 export const HarvestDetail: React.FC = () => {
-  const { screenParams, goBack, navigateTo } = useApp();
+  const { screenParams, goBack, navigateTo, diaries } = useApp();
   const lot: HarvestLot = screenParams?.lot;
 
   if (!lot) {
@@ -17,6 +17,11 @@ export const HarvestDetail: React.FC = () => {
       </div>
     );
   }
+
+  // Nhật ký canh tác liên quan của thửa ruộng
+  const relatedDiaries = diaries.filter(
+    (d) => d.farmZoneId === lot.farmZoneId || d.farmZoneName === lot.farmZoneName
+  );
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
@@ -71,14 +76,57 @@ export const HarvestDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Action: Chuyển sang đóng gói & tạo tem QR */}
-        <button
-          onClick={() => navigateTo('packaging_add')}
-          className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-lg font-extrabold shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2"
-        >
-          <span>📦</span>
-          <span>Đóng gói & Tạo mã QR từ lô này</span>
-        </button>
+        {/* CN-3.6.3: Khối Nhật ký canh tác liên quan của thửa */}
+        <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+              <span>📖</span>
+              <span>Nhật ký canh tác của thửa</span>
+            </h3>
+            <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+              {relatedDiaries.length} bản ghi
+            </span>
+          </div>
+
+          {relatedDiaries.length === 0 ? (
+            <p className="text-xs text-slate-500 italic py-2">Chưa có bản ghi nhật ký canh tác cho thửa này.</p>
+          ) : (
+            <div className="space-y-2">
+              {relatedDiaries.slice(0, 3).map((d) => (
+                <div
+                  key={d.id}
+                  onClick={() => navigateTo('diary_detail', { entry: d })}
+                  className="p-3 bg-slate-50 hover:bg-emerald-50 rounded-2xl border border-slate-200 flex items-center justify-between cursor-pointer transition-colors"
+                >
+                  <div>
+                    <div className="text-xs font-bold text-slate-800">{d.workTypeName}</div>
+                    <div className="text-[11px] text-slate-500">{d.date} • {d.createdBy}</div>
+                  </div>
+                  <span className="text-xs font-extrabold text-emerald-700">Xem ➜</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons: Sơ chế và Đóng gói */}
+        <div className="space-y-2.5">
+          <button
+            onClick={() => navigateTo('processing_add')}
+            className="w-full py-4 rounded-2xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-base font-extrabold shadow flex items-center justify-center gap-2"
+          >
+            <span>🏭</span>
+            <span>Chuyển tiếp sang Sơ chế nông sản</span>
+          </button>
+
+          <button
+            onClick={() => navigateTo('packaging_add')}
+            className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-base font-extrabold shadow flex items-center justify-center gap-2"
+          >
+            <span>📦</span>
+            <span>Đóng gói & Tạo mã QR từ lô này</span>
+          </button>
+        </div>
       </div>
     </div>
   );

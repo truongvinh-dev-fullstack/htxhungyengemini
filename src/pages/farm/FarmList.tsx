@@ -4,7 +4,7 @@ import { Header } from '../../components/Header';
 import { SEASONS_BY_HTX } from '../../mock/data';
 
 export const FarmList: React.FC = () => {
-  const { farmZones, currentHTX, navigateTo } = useApp();
+  const { farmZones, currentHTX, navigateTo, currentRole, currentUser } = useApp();
 
   const seasons = SEASONS_BY_HTX[currentHTX.id] || [
     { id: 'all', name: 'Tất cả mùa vụ' },
@@ -12,16 +12,34 @@ export const FarmList: React.FC = () => {
   ];
 
   const [selectedSeason, setSelectedSeason] = useState<string>('all');
+  const [onlyMyZones, setOnlyMyZones] = useState<boolean>(currentRole === 'R06');
 
-  // Lọc theo mùa vụ
+  // Lọc theo mùa vụ và quyền hạn vai trò (SRS Mục 7: R06 chỉ xem vùng của hộ mình)
   const filteredZones = farmZones.filter((zone) => {
-    if (selectedSeason === 'all') return true;
-    const seasonObj = seasons.find((s) => s.id === selectedSeason);
-    if (!seasonObj) return true;
-    // So khớp tên mùa vụ (bỏ icon)
-    const cleanSeasonName = seasonObj.name.replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, '').trim().toLowerCase();
-    const cleanZoneSeason = zone.season.replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, '').trim().toLowerCase();
-    return cleanZoneSeason.includes(cleanSeasonName) || cleanSeasonName.includes(cleanZoneSeason);
+    // 1. R06 bắt buộc chỉ xem vùng sản xuất của hộ mình
+    if (currentRole === 'R06') {
+      if (zone.ownerId && zone.ownerId !== currentUser.id) {
+        return false;
+      }
+    } else if (onlyMyZones) {
+      if (zone.ownerId && zone.ownerId !== currentUser.id) {
+        return false;
+      }
+    }
+
+    // 2. Lọc theo mùa vụ
+    if (selectedSeason !== 'all') {
+      const seasonObj = seasons.find((s) => s.id === selectedSeason);
+      if (seasonObj) {
+        const cleanSeasonName = seasonObj.name.replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, '').trim().toLowerCase();
+        const cleanZoneSeason = zone.season.replace(/[^a-zA-Z0-9\sÀ-ỹ]/g, '').trim().toLowerCase();
+        if (!cleanZoneSeason.includes(cleanSeasonName) && !cleanSeasonName.includes(cleanZoneSeason)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   });
 
   return (
@@ -78,6 +96,34 @@ export const FarmList: React.FC = () => {
                 </button>
               );
             })}
+          </div>
+
+          {/* Phạm vi hiển thị theo vai trò */}
+          <div className="flex items-center justify-between p-3 bg-white rounded-2xl border-2 border-slate-200 text-xs">
+            <span className="font-bold text-slate-700">
+              {currentRole === 'R06'
+                ? 'Thửa ruộng / ao nuôi của hộ tôi'
+                : 'Chỉ xem vùng canh tác phụ trách'}
+            </span>
+            {currentRole === 'R06' ? (
+              <span className="text-[11px] font-extrabold bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full border border-amber-300">
+                🔒 Cố định hộ {currentUser.name}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setOnlyMyZones(!onlyMyZones)}
+                className={`w-12 h-7 rounded-full transition-colors relative p-0.5 ${
+                  onlyMyZones ? 'bg-amber-600' : 'bg-slate-300'
+                }`}
+              >
+                <div
+                  className={`w-6 h-6 rounded-full bg-white shadow-md transform transition-transform ${
+                    onlyMyZones ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            )}
           </div>
         </div>
 

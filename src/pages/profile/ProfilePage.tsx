@@ -3,23 +3,23 @@ import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 
 export const ProfilePage: React.FC = () => {
-  const { currentUser, currentHTX, logout, navigateTo, speakText, currentRole, setRole, setHTX } = useApp();
+  const { currentUser, currentHTX, logout, navigateTo, speakText, updateProfile } = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [phone, setPhone] = useState(currentUser.phone);
   const [address, setAddress] = useState(currentUser.address);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    updateProfile({ phone: phone.trim(), address: address.trim() });
     setIsEditing(false);
     speakText('Đã cập nhật thông tin cá nhân thành công!');
-    alert('Đã cập nhật thông tin!');
   };
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
         title="Tài khoản cá nhân"
-        voiceText={`Hồ sơ thành viên ${currentUser.name}, thuộc ${currentHTX.name}. Bác có thể cập nhật thông tin hoặc đổi mật khẩu tại đây.`}
+        voiceText={`Hồ sơ thành viên ${currentUser.name}, thuộc ${currentHTX.name}. Bác có thể xem và cập nhật thông tin tại đây.`}
       />
 
       <div className="p-4 space-y-4">
@@ -112,78 +112,14 @@ export const ProfilePage: React.FC = () => {
           )}
         </div>
 
-        {/* Chuyển đổi vai trò Demo trực tiếp trong trang tài khoản */}
-        <div className="bg-amber-50 rounded-3xl p-5 border-2 border-amber-300 shadow-sm space-y-3">
-          <div className="flex items-center gap-2 text-amber-950 font-extrabold text-sm border-b border-amber-200 pb-2">
-            <span className="text-xl">🔄</span>
-            <span>Chuyển vai trò thử nghiệm (Demo Sở NN&PTNT)</span>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-amber-900 block">1. Chọn vai trò trải nghiệm:</label>
-            <div className="grid grid-cols-1 gap-2">
-              {[
-                { id: 'R06', name: 'R06: Hộ nông dân', desc: 'Bác An - Ghi nhật ký, thu hoạch, xem thửa của mình' },
-                { id: 'R05', name: 'R05: Tổ trưởng sản xuất', desc: 'Bác Thắng - Quản lý tổ viên, hỗ trợ ghi hộ' },
-                { id: 'R04', name: 'R04: Kế toán / Bán hàng', desc: 'Chị Dung - Kho vật tư, bán hàng, đối soát' },
-                { id: 'R03', name: 'R03: Cán bộ Kỹ thuật', desc: 'Kỹ sư Hoàng - Mùa vụ, VietGAP, sơ chế, tem QR' },
-                { id: 'R02', name: 'R02: Ban Quản trị HTX', desc: 'Ông Minh - Báo cáo toàn HTX, duyệt thành viên' },
-              ].map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => {
-                    setRole(r.id as any);
-                    speakText(`Đã chuyển sang vai trò ${r.name}`);
-                  }}
-                  className={`p-3 rounded-2xl border-2 text-left transition-all ${
-                    currentRole === r.id
-                      ? 'bg-emerald-700 text-white border-emerald-800 shadow-md font-bold'
-                      : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-extrabold">{r.name}</span>
-                    {currentRole === r.id && (
-                      <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                        Đang chọn
-                      </span>
-                    )}
-                  </div>
-                  <div className={`text-xs mt-0.5 ${currentRole === r.id ? 'text-emerald-100' : 'text-slate-500'}`}>
-                    {r.desc}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5 pt-2 border-t border-amber-200">
-            <label className="text-xs font-bold text-amber-900 block">2. Chọn Hợp tác xã:</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'anninh', name: 'HTX An Ninh', icon: '🌾' },
-                { id: 'dongtao', name: 'HTX Đông Tảo', icon: '🐓' },
-                { id: 'quyetthang', name: 'HTX Quyết Thắng', icon: '🍈' },
-              ].map((h) => (
-                <button
-                  key={h.id}
-                  type="button"
-                  onClick={() => {
-                    setHTX(h.id as any);
-                    speakText(`Đã chuyển sang ${h.name}`);
-                  }}
-                  className={`p-2 rounded-2xl border-2 text-center text-xs transition-all ${
-                    currentHTX.id === h.id
-                      ? 'bg-agri-700 text-white border-agri-800 font-bold shadow-md'
-                      : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="text-xl mb-0.5">{h.icon}</div>
-                  <div className="font-bold truncate">{h.name}</div>
-                </button>
-              ))}
-            </div>
+        {/* Hướng dẫn công cụ Demo Sở NN&PTNT */}
+        <div className="bg-amber-50 rounded-3xl p-4 border border-amber-300 text-xs text-amber-900 flex items-start gap-3 shadow-sm">
+          <span className="text-2xl">💡</span>
+          <div>
+            <div className="font-extrabold text-sm text-amber-950">Công cụ đổi vai trò & HTX thử nghiệm:</div>
+            <p className="text-amber-800 mt-0.5 leading-relaxed">
+              Để chuyển đổi nhanh giữa các vai trò (R02, R03, R04, R05, R06) hoặc chuyển giữa 3 HTX thí điểm, kính mời các đồng chí sử dụng thanh điều hướng màu vàng cố định ở mép trên cùng của ứng dụng.
+            </p>
           </div>
         </div>
 
