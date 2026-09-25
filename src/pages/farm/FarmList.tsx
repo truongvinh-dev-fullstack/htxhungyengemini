@@ -53,18 +53,24 @@ export const FarmList: React.FC = () => {
         {/* Top Summary Banner */}
         <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-extrabold text-amber-950">Quản lý thửa ruộng</h3>
+            <h3 className="text-lg font-extrabold text-amber-950">
+              {currentRole === 'R03' ? 'Quản lý & Cấp mã vùng trồng' : 'Vùng sản xuất của tôi'}
+            </h3>
             <p className="text-xs text-amber-800 font-medium mt-0.5">
-              Chọn giống & mùa vụ từ danh mục mẫu
+              {currentRole === 'R03'
+                ? 'Khảo sát thực địa & cấp mã MSVT cho hộ thành viên'
+                : 'Thửa ruộng, vườn trại được HTX cấp mã canh tác'}
             </p>
           </div>
-          <button
-            onClick={() => navigateTo('farm_add')}
-            className="bg-amber-700 hover:bg-amber-800 active:scale-95 text-white px-4 py-3 rounded-2xl font-extrabold text-base flex items-center gap-1.5 shadow-md whitespace-nowrap"
-          >
-            <span className="text-xl">➕</span>
-            <span>Thêm vùng</span>
-          </button>
+          {currentRole === 'R03' && (
+            <button
+              onClick={() => navigateTo('farm_add')}
+              className="bg-cyan-700 hover:bg-cyan-800 active:scale-95 text-white px-4 py-3 rounded-2xl font-extrabold text-sm flex items-center gap-1.5 shadow-md whitespace-nowrap"
+            >
+              <span className="text-lg">➕</span>
+              <span>Cấp mã vùng</span>
+            </button>
+          )}
         </div>
 
         {/* Thanh lọc Mùa vụ (Season Filter Bar) */}
@@ -130,11 +136,13 @@ export const FarmList: React.FC = () => {
         {/* List of Farm Zones */}
         <div className="space-y-4">
           {filteredZones.length === 0 ? (
-            <div className="bg-white rounded-3xl p-8 text-center border-2 border-dashed border-slate-300 space-y-2">
+            <div className="bg-white rounded-3xl p-8 text-center border-2 border-dashed border-slate-300 space-y-3">
               <span className="text-5xl block">🌾</span>
-              <h4 className="text-base font-extrabold text-slate-700">Không có vùng canh tác nào</h4>
-              <p className="text-xs text-slate-500 font-medium">
-                Trong mùa vụ đã chọn chưa có thửa ruộng/khu nuôi nào. Bác hãy thử chọn &quot;Tất cả mùa vụ&quot; nhé.
+              <h4 className="text-base font-extrabold text-slate-800">Không có vùng canh tác nào</h4>
+              <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto leading-relaxed">
+                {currentRole === 'R06'
+                  ? 'Hộ gia đình bác chưa được Ban Kỹ thuật HTX gán vùng sản xuất nào. Bác vui lòng liên hệ Cán bộ Kỹ thuật (R03) để được khảo sát và cấp mã số vùng trồng (MSVT) nhé.'
+                  : 'Trong mùa vụ đã chọn chưa có thửa ruộng/khu nuôi nào. Đồng chí có thể bấm "Cấp mã vùng" ở trên để tạo mới.'}
               </p>
             </div>
           ) : (
@@ -159,6 +167,15 @@ export const FarmList: React.FC = () => {
                 </div>
 
                 <div className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-mono text-xs font-black tracking-wide">
+                      {zone.zoneCode || 'MSVT-HTX'}
+                    </span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-800 border border-cyan-200">
+                      {zone.productionType || 'Trồng trọt'}
+                    </span>
+                  </div>
+
                   <div>
                     <h4 className="text-xl font-extrabold text-slate-900 leading-tight">
                       {zone.name}
@@ -168,6 +185,11 @@ export const FarmList: React.FC = () => {
                       <span>•</span>
                       <span>📐 {zone.areaOrQuantity}</span>
                     </div>
+                    {zone.ownerName && (
+                      <div className="text-xs text-slate-500 font-medium mt-1">
+                        Chủ hộ: <strong className="text-slate-800">{zone.ownerName}</strong>
+                      </div>
+                    )}
                   </div>
 
                   {/* CN-3.3.4: Dự báo sản lượng số to, ngôn ngữ đơn giản */}

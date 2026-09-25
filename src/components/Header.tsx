@@ -7,16 +7,8 @@ interface HeaderProps {
   voiceText?: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({ title, showBack = true, voiceText }) => {
-  const { goBack, speakText, isSpeaking, stopSpeaking, currentHTX, currentRole } = useApp();
-
-  const handleVoice = () => {
-    if (isSpeaking) {
-      stopSpeaking();
-    } else {
-      speakText(voiceText || `Màn hình ${title}. Chúc bà con một ngày lao động thuận lợi, mùa màng bội thu.`);
-    }
-  };
+export const Header: React.FC<HeaderProps> = ({ title, showBack = true }) => {
+  const { goBack, currentHTX, currentRole } = useApp();
 
   return (
     <header className="zalo-header px-3 py-3 shadow-md sticky top-0 z-30">
@@ -45,21 +37,8 @@ export const Header: React.FC<HeaderProps> = ({ title, showBack = true, voiceTex
             </p>
           </div>
         </div>
-
-        {/* Voice Assistant Button */}
-        <button
-          onClick={handleVoice}
-          title="Trợ giúp giọng nói"
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold shadow-sm transition-all ${
-            isSpeaking
-              ? 'bg-amber-400 text-amber-950 animate-pulse ring-2 ring-white'
-              : 'bg-white/20 hover:bg-white/30 text-white'
-          }`}
-        >
-          <span className="text-lg">🔊</span>
-          <span className="hidden sm:inline">{isSpeaking ? 'Đang đọc...' : 'Đọc to'}</span>
-        </button>
       </div>
     </header>
   );
 };
+

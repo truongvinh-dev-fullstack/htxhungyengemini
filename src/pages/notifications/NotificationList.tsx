@@ -42,7 +42,7 @@ export const NotificationList: React.FC = () => {
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
         title="Thông báo từ HTX"
-        voiceText="Đây là danh sách thông báo, lịch thời vụ và nhắc nhở từ Ban quản trị và Tổ trưởng."
+        voiceText="Đây là danh sách thông báo, lịch thời vụ và nhắc nhở từ Ban Quản trị Hợp tác xã."
       />
 
       <div className="p-4 space-y-3">

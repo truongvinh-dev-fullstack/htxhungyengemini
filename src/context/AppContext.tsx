@@ -31,7 +31,7 @@ import {
   INITIAL_NOTIFICATIONS,
 } from '../mock/data';
 import { API_CONFIG } from '../config/api';
-import { isDiaryLocked, canModifyDiary, canApproveMember } from '../utils/permissions';
+import { isDiaryLocked, canModifyDiary } from '../utils/permissions';
 import {
   authService,
   diaryService,
@@ -65,10 +65,10 @@ interface AppContextType {
   setActiveTab: (tab: 'home' | 'diary' | 'notifications' | 'profile') => void;
 
   // Voice Assistant
-  voiceMessage: string | null;
-  isSpeaking: boolean;
-  speakText: (text: string) => void;
-  stopSpeaking: () => void;
+
+
+
+
 
   // Data collections
   farmZones: FarmZone[];
@@ -84,7 +84,7 @@ interface AppContextType {
   notifications: AppNotification[];
 
   updateProfile: (updatedData: Partial<UserProfile>) => void;
-  addFarmZone: (zone: Omit<FarmZone, 'id' | 'farmingDays'>) => FarmZone;
+  addFarmZone: (zone: Omit<FarmZone, 'id' | 'farmingDays'>) => { success: boolean; message?: string; zone?: FarmZone };
   updateFarmZone: (zoneId: string, updatedData: Partial<FarmZone>) => void;
   deleteFarmZone: (zoneId: string) => { success: boolean; message: string };
   updateFarmZoneSeason: (
@@ -98,7 +98,7 @@ interface AppContextType {
       notes?: string;
     }
   ) => void;
-  addDiary: (entry: Omit<DiaryEntry, 'id' | 'createdAt' | 'isLocked' | 'createdBy'>) => void;
+  addDiary: (entry: Omit<DiaryEntry, 'id' | 'createdAt' | 'isLocked' | 'createdBy' | 'createdById'>) => { success: boolean; message?: string };
   updateDiary: (id: string, updatedData: Partial<DiaryEntry>) => { success: boolean; message?: string };
   deleteDiary: (id: string) => { success: boolean; message?: string };
   addHarvest: (lot: Omit<HarvestLot, 'id' | 'code'>) => void;
@@ -107,10 +107,7 @@ interface AppContextType {
   addOrder: (order: Omit<SalesOrder, 'id' | 'code'>) => void;
   updateOrderStatus: (orderId: string, status: 'Mới' | 'Đang giao' | 'Hoàn thành' | 'Đã hủy', cancelReason?: string) => void;
   cancelOrder: (orderId: string, reason: string) => void;
-  addMemberRequest: (req: Omit<MemberRequest, 'id' | 'applyDate' | 'status'>) => MemberRequest;
-  approveMemberRequest: (id: string) => { success: boolean; message?: string };
-  rejectMemberRequest: (id: string, reason: string) => { success: boolean; message?: string };
-  addMember: (member: Omit<UserProfile, 'id' | 'status'>) => void;
+
   addInventoryItem: (item: Omit<InventoryItem, 'id'>) => InventoryItem;
   addStockTransaction: (tx: Omit<StockTransaction, 'id' | 'code'>) => boolean;
   markNotificationAsRead: (id: string) => void;
@@ -133,8 +130,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTab, setActiveTabState] = useState<'home' | 'diary' | 'notifications' | 'profile'>('home');
 
   // Voice Assistant
-  const [voiceMessage, setVoiceMessage] = useState<string | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+
+
 
   // Data collections
   const [farmZones, setFarmZones] = useState<FarmZone[]>(INITIAL_FARM_ZONES);
@@ -166,33 +163,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Voice assistance function with real browser Web Speech API & modal bubble
-  const speakText = (text: string) => {
-    setVoiceMessage(text);
-    setIsSpeaking(true);
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'vi-VN';
-      utterance.rate = 0.9; // Speak a bit slower for elderly users
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(utterance);
-    } else {
-      setTimeout(() => setIsSpeaking(false), 4500);
-    }
-  };
-
-  const stopSpeaking = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsSpeaking(false);
-    setVoiceMessage(null);
-  };
-
   const navigateTo = (screen: string, params?: any) => {
-    stopSpeaking();
+
     setHistoryStack((prev) => [...prev, { screen: currentScreen, params: screenParams }]);
     setCurrentScreen(screen);
     setScreenParams(params || null);
@@ -200,7 +172,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const goBack = () => {
-    stopSpeaking();
+
     if (historyStack.length > 0) {
       const prev = historyStack[historyStack.length - 1];
       setHistoryStack((h) => h.slice(0, -1));
@@ -223,7 +195,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (currentRole === 'R04') setCurrentScreen('inventory_list');
       else if (currentRole === 'R02') setCurrentScreen('dashboard');
       else if (currentRole === 'R03') setCurrentScreen('farm_list');
-      else if (currentRole === 'R05') setCurrentScreen('members_list');
       else setCurrentScreen('diary_list');
     } else if (tab === 'notifications') {
       setCurrentScreen('notifications');
@@ -308,8 +279,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         name:
           role === 'R06'
             ? 'Bác Nguyễn Văn An'
-            : role === 'R05'
-            ? 'Bác Trần Văn Thắng'
             : role === 'R04'
             ? 'Chị Nguyễn Thị Dung'
             : role === 'R03'
@@ -317,16 +286,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : 'Ông Phạm Văn Minh',
         role,
         htxId: currentHTXId,
-        team:
-          role === 'R05'
-            ? 'Tổ trưởng Tổ 1'
-            : role === 'R03'
-            ? 'Tổ Kỹ thuật Nông nghiệp'
-            : role === 'R04'
-            ? 'Ban Kế toán & Kho'
-            : role === 'R02'
-            ? 'Ban Quản trị HTX'
-            : 'Tổ 1 - Sản xuất',
       }));
     }
   };
@@ -362,33 +321,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentHTXId]);
 
   // Check if today has diary (scoped by HTX and current user)
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
   const todayHasDiary = diaries.some(
     (d) =>
       d.htxId === currentHTXId &&
       (d.date === todayStr || d.createdAt?.startsWith(todayStr)) &&
-      (currentRole === 'R06' ? d.createdBy === currentUser.name : true)
+      (currentRole === 'R06' ? farmZones.some((zone) => zone.id === d.farmZoneId && zone.ownerId === currentUser.id) : true)
   );
 
   // Mutations
-  const addFarmZone = (zone: Omit<FarmZone, 'id' | 'farmingDays'>): FarmZone => {
+  const addFarmZone = (
+    zone: Omit<FarmZone, 'id' | 'farmingDays'>
+  ): { success: boolean; message?: string; zone?: FarmZone } => {
+    // 1. Phân quyền: Chỉ Cán bộ Kỹ thuật R03 được tạo vùng sản xuất mới
+    if (currentRole !== 'R03') {
+      return {
+        success: false,
+        message: 'Chỉ Cán bộ Kỹ thuật (R03) mới có quyền khảo sát và cấp mã vùng sản xuất mới cho thành viên HTX.',
+      };
+    }
+
+    // 2. Kiểm tra trùng lặp mã số vùng trồng (MSVT)
+    if (
+      farmZones.some(
+        (z) => z.zoneCode?.trim().toLowerCase() === zone.zoneCode?.trim().toLowerCase()
+      )
+    ) {
+      return {
+        success: false,
+        message: `Mã số vùng trồng/sản xuất "${zone.zoneCode}" đã tồn tại trong hệ thống. Vui lòng chọn mã khác.`,
+      };
+    }
+
+    const areaStr = zone.areaOrQuantity || `${zone.areaValue} ${zone.areaUnit}`;
+    const forecastStr =
+      zone.forecastYield ||
+      `Dự kiến thu: ${zone.expectedYieldValue} ${zone.expectedYieldUnit} — ngày ${zone.expectedHarvestDate}`;
+
     const newZone: FarmZone = {
       ...zone,
       id: `fz-${Date.now()}`,
-      ownerId: zone.ownerId || currentUser.id,
+      areaOrQuantity: areaStr,
+      forecastYield: forecastStr,
       farmingDays: 1,
       seasonHistory: [
         {
           seasonName: zone.season,
           year: new Date().getFullYear(),
-          yieldResult: zone.forecastYield,
+          yieldResult: forecastStr,
           status: 'Đang canh tác',
           quality: 'Chuẩn HTX',
         },
       ],
     };
     setFarmZones((prev) => [newZone, ...prev]);
-    return newZone;
+    return { success: true, zone: newZone };
   };
 
   const deleteFarmZone = (zoneId: string): { success: boolean; message: string } => {
@@ -470,23 +458,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const addDiary = (entry: Omit<DiaryEntry, 'id' | 'createdAt' | 'isLocked' | 'createdBy'>) => {
+  const addDiary = (entry: Omit<DiaryEntry, 'id' | 'createdAt' | 'isLocked' | 'createdBy' | 'createdById'>): { success: boolean; message?: string } => {
+    const zone = farmZones.find((z) => z.id === entry.farmZoneId && z.htxId === currentHTXId);
+    if (!zone) return { success: false, message: 'Vùng sản xuất không thuộc HTX hiện tại.' };
+    if (!['R03', 'R06'].includes(currentRole)) return { success: false, message: 'Vai trò này không được ghi nhật ký.' };
+    if (currentRole === 'R06' && zone.ownerId !== currentUser.id) {
+      return { success: false, message: 'Hộ chỉ được ghi nhật ký cho vùng mình phụ trách.' };
+    }
+    if (!entry.date || !entry.workTypes?.length) {
+      return { success: false, message: 'Cần chọn ngày thực hiện và ít nhất một công việc.' };
+    }
+    if (entry.performedAt?.slice(0, 10) !== entry.date) {
+      return { success: false, message: 'Ngày và giờ thực hiện không khớp.' };
+    }
+    if (entry.materialId) {
+      const material = inventory.find((item) => item.id === entry.materialId && item.htxId === currentHTXId);
+      if (!material || !entry.materialQuantity || entry.materialQuantity <= 0) {
+        return { success: false, message: 'Vật tư hoặc số lượng vật tư không hợp lệ.' };
+      }
+    }
+    if (entry.phiDays !== undefined && (!Number.isInteger(entry.phiDays) || entry.phiDays < 0)) {
+      return { success: false, message: 'Thời gian cách ly PHI không hợp lệ.' };
+    }
     const newEntry: DiaryEntry = {
       ...entry,
+      htxId: currentHTXId,
+      farmZoneName: zone.name,
+      subjectOwnerId: zone.ownerId,
+      subjectOwnerName: zone.ownerName,
       id: `d-${Date.now()}`,
       createdAt: new Date().toISOString(),
       isLocked: false,
       createdBy: currentUser.name,
+      createdById: currentUser.id,
     };
     setDiaries((prev) => [newEntry, ...prev]);
 
-    // CN-3.5.5 / CN-2.5.9: Tự động gửi thông báo tới cán bộ kỹ thuật và tổ trưởng khi có nhật ký mới
+    // CN-3.5.5 / CN-2.5.9: Tự động gửi thông báo tới cán bộ kỹ thuật khi có nhật ký mới
     const notif: AppNotification = {
       id: `notif-${Date.now()}`,
       htxId: currentHTXId,
       title: `Nhật ký mới: ${newEntry.workTypeName}`,
-      summary: `${currentUser.name} vừa ghi nhật ký tại ${newEntry.farmZoneName}`,
-      content: `Bác ${currentUser.name} vừa cập nhật công việc "${newEntry.workTypeName}" tại ${newEntry.farmZoneName}. Ngày thực hiện: ${newEntry.date}. ${newEntry.suppliesUsed ? `Vật tư: ${newEntry.suppliesUsed}. ` : ''}Ghi chú: ${newEntry.notes || 'Không có.'}`,
+      summary: `${currentUser.name} vừa ghi nhật ký cho vùng của ${zone.ownerName}`,
+      content: `${currentUser.name} vừa cập nhật công việc "${newEntry.workTypeName}" tại ${newEntry.farmZoneName} (hộ phụ trách: ${zone.ownerName}). Ngày thực hiện: ${newEntry.date}. ${newEntry.suppliesUsed ? `Vật tư: ${newEntry.suppliesUsed}. ` : ''}Ghi chú: ${newEntry.notes || 'Không có.'}`,
       date: new Date().toISOString().split('T')[0],
       type: 'system',
       isRead: false,
@@ -498,28 +512,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Lỗi lưu nhật ký qua API:', err);
       });
     }
+    return { success: true };
   };
 
   const updateDiary = (id: string, updatedData: Partial<DiaryEntry>): { success: boolean; message?: string } => {
     const entry = diaries.find((d) => d.id === id);
-    if (!entry) return { success: false, message: 'Không tìm thấy nhật ký.' };
+    if (!entry || entry.htxId !== currentHTXId) return { success: false, message: 'Không tìm thấy nhật ký.' };
+    if (currentRole === 'R06' && !farmZones.some((zone) => zone.id === entry.farmZoneId && zone.ownerId === currentUser.id)) {
+      return { success: false, message: 'Hộ không phụ trách vùng của nhật ký này.' };
+    }
 
-    const check = canModifyDiary(currentRole, entry, currentUser.name);
+    const check = canModifyDiary(currentRole, entry, currentUser.name, currentUser.id);
     if (!check.canEdit) {
       return { success: false, message: check.reason || 'Không có quyền chỉnh sửa nhật ký này.' };
     }
+    if (updatedData.performedAt && updatedData.date !== updatedData.performedAt.slice(0, 10)) {
+      return { success: false, message: 'Ngày và giờ thực hiện không khớp.' };
+    }
 
+    const editableFields: (keyof DiaryEntry)[] = [
+      'workTypeName', 'workType', 'workTypes', 'workTypeIcon', 'date', 'performedAt', 'photoUrl', 'workDescription',
+      'suppliesUsed', 'materialId', 'materialQuantity', 'materialUnit', 'phiDays',
+      'weatherCondition', 'weatherSuggestedAt', 'notes',
+    ];
+    const changes: Partial<DiaryEntry> = {};
+    editableFields.forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(updatedData, key)) {
+        (changes as Record<string, unknown>)[key] = updatedData[key];
+      }
+    });
     setDiaries((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, ...updatedData } : d))
+      prev.map((d) => (d.id === id ? { ...d, ...changes } : d))
     );
     return { success: true };
   };
 
   const deleteDiary = (id: string): { success: boolean; message?: string } => {
     const entry = diaries.find((d) => d.id === id);
-    if (!entry) return { success: false, message: 'Không tìm thấy nhật ký.' };
+    if (!entry || entry.htxId !== currentHTXId) return { success: false, message: 'Không tìm thấy nhật ký.' };
+    if (currentRole === 'R06' && !farmZones.some((zone) => zone.id === entry.farmZoneId && zone.ownerId === currentUser.id)) {
+      return { success: false, message: 'Hộ không phụ trách vùng của nhật ký này.' };
+    }
 
-    const check = canModifyDiary(currentRole, entry, currentUser.name);
+    const check = canModifyDiary(currentRole, entry, currentUser.name, currentUser.id);
     if (!check.canDelete) {
       return { success: false, message: check.reason || 'Không có quyền xóa nhật ký này.' };
     }
@@ -654,164 +689,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateOrderStatus(orderId, 'Đã hủy', reason);
   };
 
-  const addMemberRequest = (req: Omit<MemberRequest, 'id' | 'applyDate' | 'status'>): MemberRequest => {
-    const newReq: MemberRequest = {
-      ...req,
-      id: `req-${Date.now()}`,
-      applyDate: new Date().toLocaleDateString('vi-VN'),
-      status: 'pending',
-    };
-    setMemberRequests((prev) => [newReq, ...prev]);
 
-    // Bắn thông báo cho Ban Quản trị
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        htxId: newReq.htxId,
-        title: '📝 Yêu cầu gia nhập HTX mới',
-        summary: `Hộ bác ${newReq.name} (${newReq.village}) vừa gửi hồ sơ xin tham gia HTX.`,
-        content: `Bác ${newReq.name}, SĐT: ${newReq.phone}, CCCD: ${newReq.cccd}, cư trú tại ${newReq.village} vừa gửi đơn đăng ký thành viên HTX. Kính mời Ban Quản trị xem xét phê duyệt.`,
-        date: 'Vừa xong',
-        type: 'approval',
-        isRead: false,
-        actionScreen: 'members_approval',
-        actionLabel: 'Xem duyệt hồ sơ',
-      },
-      ...prev,
-    ]);
-
-    return newReq;
-  };
-
-  const approveMemberRequest = (id: string): { success: boolean; message?: string } => {
-    if (currentRole !== 'R02' && currentRole !== 'R05') {
-      return { success: false, message: 'Chỉ Ban Quản trị (R02) hoặc Tổ trưởng (R05) mới có quyền phê duyệt thành viên.' };
-    }
-
-    const req = memberRequests.find((r) => r.id === id);
-    if (!req) return { success: false, message: 'Không tìm thấy hồ sơ yêu cầu.' };
-
-    if (!canApproveMember(currentRole, currentUser.team, req.team)) {
-      return { success: false, message: 'Bác là Tổ trưởng chỉ có quyền phê duyệt thành viên đăng ký vào tổ của mình.' };
-    }
-
-    const defaultTeam = req.team || (
-      req.htxId === 'dongtao'
-        ? 'Tổ 1 - Chăn nuôi Gà Đông Tảo'
-        : req.htxId === 'quyetthang'
-        ? 'Tổ 1 - Nhãn lồng & Thủy sản'
-        : 'Tổ 1 - Lúa sạch'
-    );
-
-    const newMemberId = `m-${Date.now()}`;
-    const newMember: UserProfile = {
-      id: newMemberId,
-      name: req.name,
-      role: 'R06',
-      phone: req.phone,
-      cccd: req.cccd,
-      htxId: req.htxId,
-      team: defaultTeam,
-      avatar: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80',
-      address: req.village,
-      status: 'active',
-    };
-
-    setMembers((prev) => [newMember, ...prev]);
-    // Giữ lại trong danh sách với status 'approved' thay vì xóa khỏi lịch sử
-    setMemberRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: 'approved',
-              approvedBy: currentUser.name,
-              approvedAt: new Date().toISOString().split('T')[0],
-            }
-          : r
-      )
-    );
-
-    // Bắn thông báo phê duyệt
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        htxId: req.htxId,
-        userId: newMemberId,
-        title: '✅ Đã phê duyệt thành viên mới',
-        summary: `Thành viên ${req.name} đã được kết nạp chính thức vào ${defaultTeam}.`,
-        content: `Hồ sơ đăng ký của bác ${req.name} đã được ${currentUser.name} (${currentRole}) phê duyệt chính thức. Tài khoản thành viên đã kích hoạt đầy đủ quyền hạn tham gia chuỗi sản xuất VietGAP của HTX.`,
-        date: 'Vừa xong',
-        type: 'approval',
-        isRead: false,
-        actionScreen: 'members_list',
-        actionLabel: 'Danh sách thành viên',
-      },
-      ...prev,
-    ]);
-
-    if (!API_CONFIG.USE_MOCK) {
-      memberService.approveRequest(id).catch((err) => {
-        console.error('Lỗi duyệt thành viên qua API:', err);
-      });
-    }
-
-    return { success: true };
-  };
-
-  const rejectMemberRequest = (id: string, reason: string): { success: boolean; message?: string } => {
-    if (currentRole !== 'R02' && currentRole !== 'R05') {
-      return { success: false, message: 'Chỉ Ban Quản trị (R02) hoặc Tổ trưởng (R05) mới có quyền từ chối thành viên.' };
-    }
-
-    const req = memberRequests.find((r) => r.id === id);
-    if (!req) return { success: false, message: 'Không tìm thấy hồ sơ.' };
-
-    setMemberRequests((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              status: 'rejected',
-              rejectionReason: reason,
-              approvedBy: currentUser.name,
-              approvedAt: new Date().toISOString().split('T')[0],
-            }
-          : r
-      )
-    );
-
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        htxId: req.htxId,
-        title: '❌ Hồ sơ đăng ký chưa được duyệt',
-        summary: `Hồ sơ của bác ${req.name} chưa đủ điều kiện: ${reason}`,
-        content: `Ban Quản trị HTX thông báo hồ sơ của bác ${req.name} chưa được phê duyệt với lý do: "${reason}". Bác vui lòng liên hệ Ban Quản trị để được hỗ trợ hoàn thiện hồ sơ.`,
-        date: 'Vừa xong',
-        type: 'approval',
-        isRead: false,
-      },
-      ...prev,
-    ]);
-
-    if (!API_CONFIG.USE_MOCK) {
-      memberService.rejectRequest(id, reason).catch((err) => {
-        console.error('Lỗi từ chối duyệt qua API:', err);
-      });
-    }
-
-    return { success: true };
-  };
-
-  const addMember = (member: Omit<UserProfile, 'id' | 'status'>) => {
-    const newM: UserProfile = {
-      ...member,
-      id: `m-${Date.now()}`,
-      status: 'active',
-    };
-    setMembers((prev) => [newM, ...prev]);
-  };
 
   const addInventoryItem = (item: Omit<InventoryItem, 'id'>): InventoryItem => {
     const newItem: InventoryItem = {
@@ -915,10 +793,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         goBack,
         activeTab,
         setActiveTab,
-        voiceMessage,
-        isSpeaking,
-        speakText,
-        stopSpeaking,
+
+
+
+
         farmZones: farmZones.filter((f) => f.htxId === currentHTXId),
         diaries: diaries.filter((d) => d.htxId === currentHTXId),
         harvests: harvests.filter((h) => h.htxId === currentHTXId),
@@ -943,10 +821,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addOrder,
         updateOrderStatus,
         cancelOrder,
-        addMemberRequest,
-        approveMemberRequest,
-        rejectMemberRequest,
-        addMember,
+
         addInventoryItem,
         addStockTransaction,
         markNotificationAsRead,

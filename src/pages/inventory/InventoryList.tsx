@@ -15,7 +15,6 @@ export const InventoryList: React.FC = () => {
         (t) =>
           t.type === 'export' &&
           (t.recipientOrSupplier.toLowerCase().includes(currentUser.name.toLowerCase()) ||
-            t.recipientOrSupplier.includes('Tổ 1') ||
             t.recipientOrSupplier.includes('hộ'))
       )
     : transactions;

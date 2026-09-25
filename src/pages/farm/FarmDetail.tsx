@@ -5,7 +5,7 @@ import { FarmZone } from '../../types';
 import { SEASONS_BY_HTX } from '../../mock/data';
 
 export const FarmDetail: React.FC = () => {
-  const { screenParams, goBack, navigateTo, currentHTX, updateFarmZoneSeason, updateFarmZone, deleteFarmZone, speakText, farmZones } = useApp();
+  const { screenParams, goBack, navigateTo, currentHTX, updateFarmZoneSeason, updateFarmZone, deleteFarmZone, farmZones } = useApp();
   const initialZone: FarmZone = screenParams?.zone;
 
   // Lấy dữ liệu mới nhất của vùng từ AppContext state theo ID
@@ -62,7 +62,7 @@ export const FarmDetail: React.FC = () => {
       notes: `Chuyển vụ canh tác mới: ${newSeasonName} cho giống ${newVariety}.`,
     });
 
-    speakText(`Đã kích hoạt ${newSeasonName} cho thửa ruộng ${currentZone.name}. Mùa vụ trước đã được lưu vào lịch sử.`);
+
     setShowSeasonModal(false);
   };
 
@@ -78,7 +78,7 @@ export const FarmDetail: React.FC = () => {
       status: editStatus,
       notes: editNotes.trim(),
     });
-    speakText('Đã cập nhật thông tin thửa ruộng thành công');
+
     setShowEditModal(false);
   };
 
@@ -107,14 +107,25 @@ export const FarmDetail: React.FC = () => {
           </div>
 
           <div className="p-5 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="px-3 py-1 rounded-xl bg-slate-900 text-white font-mono text-sm font-black tracking-wide">
+                {currentZone.zoneCode || currentZone.id.toUpperCase()}
+              </span>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-cyan-100 text-cyan-900 border border-cyan-300">
+                {currentZone.productionType || 'Trồng trọt'}
+              </span>
+            </div>
+
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Mã thửa cố định: {currentZone.id.toUpperCase()}
-                </span>
-                <h2 className="text-2xl font-extrabold text-slate-900 mt-0.5">{currentZone.name}</h2>
+                <h2 className="text-2xl font-extrabold text-slate-900">{currentZone.name}</h2>
+                {currentZone.ownerName && (
+                  <p className="text-xs text-slate-500 font-bold mt-1">
+                    Chủ hộ phụ trách: <span className="text-slate-900">{currentZone.ownerName}</span>
+                  </p>
+                )}
               </div>
-              <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl">
+              <span className="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
                 {currentZone.areaOrQuantity}
               </span>
             </div>
@@ -184,6 +195,15 @@ export const FarmDetail: React.FC = () => {
                 <span className="font-extrabold text-slate-900">{currentZone.farmingDays} ngày</span>
               </div>
             </div>
+
+            {currentZone.soilOrWaterCondition && (
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                <span className="text-xs text-slate-500 font-bold block mb-0.5">Thổ nhưỡng / Nguồn nước:</span>
+                <p className="text-xs text-slate-800 font-semibold leading-relaxed">
+                  💧 {currentZone.soilOrWaterCondition}
+                </p>
+              </div>
+            )}
 
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
               <span className="text-xs text-slate-500 font-bold block mb-1">Ghi chú kỹ thuật:</span>
@@ -543,9 +563,9 @@ export const FarmDetail: React.FC = () => {
                   const res = deleteFarmZone(currentZone.id);
                   if (!res.success) {
                     setDeleteError(res.message);
-                    speakText(res.message);
+
                   } else {
-                    speakText('Đã xóa vùng sản xuất thành công.');
+
                     setShowDeleteModal(false);
                     goBack();
                   }

@@ -10,7 +10,6 @@ export const RoleHTXSwitcher: React.FC = () => {
 
   const roles: { id: UserRole; name: string; tag: string }[] = [
     { id: 'R06', name: 'R06: Hộ nông dân', tag: 'Chính - Ghi nhật ký, thu hoạch' },
-    { id: 'R05', name: 'R05: Tổ trưởng', tag: 'Quản lý & duyệt thành viên tổ' },
     { id: 'R04', name: 'R04: Kế toán / Bán hàng', tag: 'Quản lý kho & Bán hàng' },
     { id: 'R03', name: 'R03: Cán bộ kỹ thuật', tag: 'Mùa vụ, quy trình, sơ chế, QR' },
     { id: 'R02', name: 'R02: Ban Quản trị', tag: 'Xem báo cáo tổng hợp HTX' },

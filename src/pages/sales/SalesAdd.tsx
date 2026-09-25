@@ -4,7 +4,7 @@ import { Header } from '../../components/Header';
 import { CounterInput } from '../../components/CounterInput';
 
 export const SalesAdd: React.FC = () => {
-  const { addOrder, navigateTo, speakText, currentHTX } = useApp();
+  const { addOrder, navigateTo, currentHTX } = useApp();
 
   const sampleCustomers = [
     { name: 'Cửa hàng Nông sản Sạch Hà Nội', phone: '0912 345 999' },
@@ -42,7 +42,7 @@ export const SalesAdd: React.FC = () => {
       date: new Date().toISOString().split('T')[0],
     });
 
-    speakText('Đơn hàng đã được tạo thành công! Bác có thể xem trước hóa đơn điện tử.');
+
     navigateTo('sales_list');
   };
 

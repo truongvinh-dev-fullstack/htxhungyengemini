@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
-import { DiaryEntry } from '../../types';
+import { isDiaryLocked } from '../../utils/permissions';
 
 export const DiaryList: React.FC = () => {
   const { diaries, farmZones, navigateTo, currentHTX, currentRole, currentUser } = useApp();
@@ -9,19 +9,21 @@ export const DiaryList: React.FC = () => {
   const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
   const [onlyMine, setOnlyMine] = useState<boolean>(currentRole === 'R06');
 
-  // Lọc nhật ký theo vai trò và thửa ruộng (SRS Mục 7: R06 chỉ xem nhật ký của mình)
+  const visibleZones = farmZones.filter((zone) => currentRole !== 'R06' || zone.ownerId === currentUser.id);
+
+  // Hộ xem mọi nhật ký của vùng mình phụ trách, kể cả bản ghi do cán bộ ghi hộ.
   const filteredDiaries = diaries.filter((entry) => {
     // 1. Lọc theo thửa ruộng
     if (selectedZoneId !== 'all' && entry.farmZoneId !== selectedZoneId) {
       return false;
     }
 
-    // 2. R06 bắt buộc chỉ xem nhật ký do chính hộ mình ghi
+    // 2. R06 xem theo vùng được giao, không theo người nhập nhật ký.
     if (currentRole === 'R06') {
-      if (entry.createdBy !== currentUser.name) {
+      if (!visibleZones.some((zone) => zone.id === entry.farmZoneId)) {
         return false;
       }
-    } else if (onlyMine && entry.createdBy !== currentUser.name) {
+    } else if (onlyMine && (entry.createdById ? entry.createdById !== currentUser.id : entry.createdBy !== currentUser.name)) {
       return false;
     }
 
@@ -65,7 +67,7 @@ export const DiaryList: React.FC = () => {
               className="w-full h-12 px-3 rounded-2xl border-2 border-slate-200 text-sm font-bold text-slate-800 bg-slate-50 focus:border-emerald-600 focus:outline-none"
             >
               <option value="all">Tất cả các thửa ruộng / vùng nuôi</option>
-              {farmZones.map((z) => (
+              {visibleZones.map((z) => (
                 <option key={z.id} value={z.id}>
                   {z.name} ({z.variety})
                 </option>
@@ -137,7 +139,7 @@ export const DiaryList: React.FC = () => {
                   </div>
 
                   {/* CN-3.5.6: Lock Status or Editable */}
-                  {entry.isLocked ? (
+                  {isDiaryLocked(entry) ? (
                     <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 border border-slate-300 px-2.5 py-1 rounded-full text-xs font-bold">
                       <span>🔒</span>
                       <span>Đã khóa, không thể sửa</span>
@@ -152,11 +154,7 @@ export const DiaryList: React.FC = () => {
 
                 {/* Photo & Notes snippet */}
                 <div className="flex gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
-                  <img
-                    src={entry.photoUrl}
-                    alt={entry.workTypeName}
-                    className="w-20 h-20 rounded-xl object-cover border border-slate-200 flex-shrink-0"
-                  />
+                   {entry.photoUrl ? <img src={entry.photoUrl} alt={entry.workTypeName} className="w-20 h-20 rounded-xl object-cover border border-slate-200 flex-shrink-0" /> : <div className="w-20 h-20 rounded-xl bg-slate-200 text-slate-500 flex-shrink-0 flex items-center justify-center text-xs text-center">Chưa có ảnh</div>}
                   <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                     {entry.suppliesUsed && (
                       <div className="text-xs font-bold text-emerald-800">
@@ -167,7 +165,7 @@ export const DiaryList: React.FC = () => {
                       {entry.notes || 'Không có ghi chú thêm.'}
                     </p>
                     <div className="text-[11px] text-slate-400 font-medium">
-                      Người ghi: {entry.createdBy}
+                      Hộ phụ trách: {entry.subjectOwnerName || farmZones.find((z) => z.id === entry.farmZoneId)?.ownerName || 'Chưa rõ'} • Người ghi: {entry.createdBy}
                     </div>
                   </div>
                 </div>

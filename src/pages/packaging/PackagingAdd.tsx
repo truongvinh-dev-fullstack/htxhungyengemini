@@ -4,7 +4,7 @@ import { Header } from '../../components/Header';
 import { CounterInput } from '../../components/CounterInput';
 
 export const PackagingAdd: React.FC = () => {
-  const { harvests, processingLots, addPackage, navigateTo, currentHTX, speakText, screenParams } = useApp();
+  const { harvests, processingLots, addPackage, navigateTo, currentHTX, screenParams } = useApp();
 
   const prefilledProcessingLot = screenParams?.processingLot;
 
@@ -49,7 +49,7 @@ export const PackagingAdd: React.FC = () => {
       standard,
     });
 
-    speakText('Đã sinh mã QR thành công cho sản phẩm. Bác có thể in tem hoặc chia sẻ qua Zalo.');
+
     navigateTo('packaging_qr', { pkg: createdPkg });
   };
 

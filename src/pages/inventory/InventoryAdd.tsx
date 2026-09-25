@@ -4,7 +4,7 @@ import { Header } from '../../components/Header';
 import { CounterInput } from '../../components/CounterInput';
 
 export const InventoryAdd: React.FC = () => {
-  const { addInventoryItem, currentHTX, goBack, speakText } = useApp();
+  const { addInventoryItem, currentHTX, goBack } = useApp();
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState<'Giong' | 'PhanBon' | 'ThuocBVTV' | 'ThucAn' | 'BaoBi'>('PhanBon');
@@ -32,7 +32,7 @@ export const InventoryAdd: React.FC = () => {
       description: description.trim() || undefined,
     });
 
-    speakText(`Đã thêm mặt hàng ${name} vào danh mục kho của ${currentHTX.shortName}!`);
+
     alert(`Đã thêm mặt hàng "${name}" thành công!`);
     goBack();
   };

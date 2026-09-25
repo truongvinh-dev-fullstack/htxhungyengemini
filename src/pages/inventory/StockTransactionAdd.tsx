@@ -4,7 +4,7 @@ import { Header } from '../../components/Header';
 import { CounterInput } from '../../components/CounterInput';
 
 export const StockTransactionAdd: React.FC = () => {
-  const { screenParams, inventory, addStockTransaction, goBack, speakText, currentHTX } = useApp();
+  const { screenParams, inventory, addStockTransaction, goBack, currentHTX } = useApp();
   const txType: 'import' | 'export' = screenParams?.type || 'export';
 
   const [selectedItemName, setSelectedItemName] = useState<string>(
@@ -13,7 +13,7 @@ export const StockTransactionAdd: React.FC = () => {
   const selectedItem = inventory.find((i) => i.name === selectedItemName);
   const [quantity, setQuantity] = useState<number>(50);
   const [target, setTarget] = useState<string>(
-    txType === 'export' ? 'Cấp cho hộ bác Nguyễn Văn An (Tổ 1)' : 'Công ty Cổ phần Tập đoàn Quế Lâm'
+    txType === 'export' ? 'Cấp cho hộ bác Nguyễn Văn An (Thôn An Xá)' : 'Công ty Cổ phần Tập đoàn Quế Lâm'
   );
   const [notes, setNotes] = useState<string>('Theo kế hoạch sản xuất vụ Xuân 2026');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -27,7 +27,7 @@ export const StockTransactionAdd: React.FC = () => {
       setErrorMsg(
         `Không thể xuất kho! Số lượng yêu cầu xuất (${quantity} ${selectedItem.unit}) vượt quá số lượng tồn kho hiện có (${selectedItem.stock} ${selectedItem.unit}).`
       );
-      speakText('Cảnh báo! Số lượng xuất vượt quá tồn kho hiện có.');
+
       return;
     }
 
@@ -43,7 +43,7 @@ export const StockTransactionAdd: React.FC = () => {
     });
 
     if (success) {
-      speakText(`Đã lập phiếu ${txType === 'import' ? 'nhập kho' : 'xuất kho'} thành công!`);
+
       goBack();
     }
   };

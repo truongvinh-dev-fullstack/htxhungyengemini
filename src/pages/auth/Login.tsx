@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 
 export const Login: React.FC = () => {
-  const { loginWithZaloPhone, speakText, navigateTo } = useApp();
+  const { loginWithZaloPhone, navigateTo } = useApp();
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [selectedPhone, setSelectedPhone] = useState('0978 123 456');
@@ -23,16 +23,6 @@ export const Login: React.FC = () => {
       htx: 'HTX An Ninh (Lúa sạch)',
       tag: 'Hợp lệ',
       color: 'bg-emerald-100 text-emerald-900 border-emerald-300',
-    },
-    {
-      phone: '0912 888 999',
-      name: 'Bác Trần Văn Thắng',
-      roleCode: 'R05',
-      role: 'R05: Tổ trưởng',
-      desc: 'Quản lý thành viên + Duyệt thành viên mới',
-      htx: 'HTX An Ninh (Lúa sạch)',
-      tag: 'Hợp lệ',
-      color: 'bg-teal-100 text-teal-900 border-teal-300',
     },
     {
       phone: '0983 234 567',
@@ -113,18 +103,6 @@ export const Login: React.FC = () => {
         reason,
         name: result.user?.name,
       });
-
-      if (reason === 'PENDING') {
-        speakText('Hồ sơ của bác đang chờ Ban quản trị phê duyệt. Vui lòng liên hệ HTX để được hỗ trợ.');
-      } else if (reason === 'REJECTED') {
-        speakText('Hồ sơ đăng ký của bác đã bị từ chối. Vui lòng liên hệ Ban quản trị để biết thêm chi tiết.');
-      } else if (reason === 'INACTIVE') {
-        speakText('Tài khoản của bác đang tạm ngừng hoạt động. Vui lòng liên hệ Ban quản trị HTX.');
-      } else {
-        speakText(`Số điện thoại ${finalPhone} chưa được đăng ký trong HTX. Bác hãy bấm Đăng ký thành viên mới nhé.`);
-      }
-    } else {
-      speakText(`Chào mừng bác ${result.user?.name} đã đăng nhập thành công qua Zalo!`);
     }
   };
 
@@ -164,7 +142,7 @@ export const Login: React.FC = () => {
                 </div>
                 <div className="p-4 bg-amber-50 rounded-2xl border-2 border-amber-200 text-left text-sm text-amber-950 space-y-2">
                   <p>
-                    Yêu cầu đăng ký tham gia Hợp tác xã đã được gửi tới Tổ trưởng và Ban Quản trị. Vui lòng chờ phê duyệt để bắt đầu sử dụng đầy đủ chức năng.
+                    Hồ sơ thành viên của bác đang chờ Ban Quản trị Hợp tác xã kích hoạt trên Cổng Quản trị Web. Vui lòng chờ để bắt đầu sử dụng đầy đủ chức năng.
                   </p>
                   <p className="font-semibold text-xs text-amber-800">
                     Liên hệ trực tiếp BQT nếu cần duyệt gấp: <a href="tel:0912345678" className="text-blue-700 underline font-bold">0912.345.678</a>
@@ -204,23 +182,14 @@ export const Login: React.FC = () => {
                     {authError.phone}
                   </p>
                 </div>
-                <div className="p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-300 text-left text-sm text-emerald-950 space-y-2">
-                  <p className="font-extrabold text-emerald-900">
-                    Bác là hộ nông dân mới muốn tham gia HTX?
+                <div className="p-4 bg-amber-50 rounded-2xl border-2 border-amber-300 text-left text-sm text-amber-950 space-y-2">
+                  <p className="font-extrabold text-amber-900">
+                    Chưa có hồ sơ thành viên trên hệ thống
                   </p>
-                  <p className="text-xs text-emerald-800 leading-relaxed font-medium">
-                    Bác có thể gửi thông tin đăng ký trực tuyến ngay tại đây để Ban Quản trị và Tổ trưởng xét duyệt vào danh sách xã viên.
+                  <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                    Hồ sơ thành viên Hợp tác xã được khởi tạo và quản lý tập trung trên Cổng thông tin Quản trị HTX (Web Portal). Bác vui lòng liên hệ Ban Quản trị Hợp tác xã để được tạo hồ sơ và cấp quyền truy cập.
                   </p>
                 </div>
-
-                {/* CN-3.1.5: Navigation to Register Form */}
-                <button
-                  onClick={() => navigateTo('auth_register')}
-                  className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-lg font-extrabold shadow-lg shadow-emerald-700/30 flex items-center justify-center gap-2"
-                >
-                  <span>📝</span>
-                  <span>ĐĂNG KÝ THÀNH VIÊN MỚI NGAY</span>
-                </button>
               </>
             )}
 
@@ -268,16 +237,11 @@ export const Login: React.FC = () => {
               <span>ĐĂNG NHẬP BẰNG ZALO</span>
             </button>
 
-            {/* CN-3.1.5: Quick link for new members */}
+            {/* Quick contact notice for new members */}
             <div className="pt-2 text-center border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => navigateTo('auth_register')}
-                className="text-sm font-extrabold text-emerald-700 hover:text-emerald-800 flex items-center justify-center gap-1.5 mx-auto active:scale-95"
-              >
-                <span>Chưa có hồ sơ xã viên?</span>
-                <span className="underline">Đăng ký tham gia HTX tại đây ➜</span>
-              </button>
+              <p className="text-xs text-slate-500 font-medium">
+                Chưa có hồ sơ thành viên? Liên hệ <strong className="text-slate-700">Ban Quản trị HTX</strong> để được cấp tài khoản qua Cổng Quản trị Web.
+              </p>
             </div>
           </div>
         )}

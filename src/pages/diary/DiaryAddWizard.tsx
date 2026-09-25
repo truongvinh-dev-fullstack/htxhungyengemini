@@ -1,30 +1,53 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
+import { getCurrentWeatherSuggestion } from '../../services/currentWeather';
+import { diaryWorkTypes } from './workTypes';
+
+const localDateTime = (date: Date): string => {
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+};
 
 export const DiaryAddWizard: React.FC = () => {
-  const { farmZones, addDiary, navigateTo, speakText, currentHTX } = useApp();
+  const { farmZones, inventory, addDiary, navigateTo, currentHTX, currentRole, currentUser } = useApp();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
+  // Danh sách vùng hợp lệ cho người dùng hiện tại (R06 chỉ thấy vùng của hộ mình)
+  const availableZones = React.useMemo(() => {
+    return farmZones.filter((z) => {
+      if (z.htxId !== currentHTX.id) return false;
+      if (currentRole === 'R06') {
+        return z.ownerId === currentUser.id;
+      }
+      return currentRole === 'R03';
+    });
+  }, [farmZones, currentHTX.id, currentRole, currentUser.id]);
+
   // Step 1: Chọn ngày & Vùng sản xuất
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const todayStr = localDateTime(new Date()).slice(0, 10);
+  const [performedAt, setPerformedAt] = useState<string>(() => localDateTime(new Date()));
   const [selectedZoneId, setSelectedZoneId] = useState<string>(
-    farmZones.length > 0 ? farmZones[0].id : ''
+    availableZones.length > 0 ? availableZones[0].id : ''
   );
 
+  React.useEffect(() => {
+    if (!availableZones.some((z) => z.id === selectedZoneId)) {
+      setSelectedZoneId(availableZones[0]?.id || '');
+    }
+  }, [availableZones, selectedZoneId]);
+
   // Step 2: Chọn nhiều loại công việc bằng icon lớn & vật tư
-  const workTypes = [
-    { id: 'tuoi_nuoc', name: 'Tưới nước điều tiết', icon: '💧', color: 'bg-blue-50 text-blue-700 border-blue-300' },
-    { id: 'bon_phan', name: 'Bón phân hữu cơ', icon: '🌱', color: 'bg-emerald-50 text-emerald-700 border-emerald-300' },
-    { id: 'phun_thuoc', name: 'Phun chế phẩm sinh học', icon: '🛡️', color: 'bg-amber-50 text-amber-700 border-amber-300' },
-    { id: 'cho_an', name: 'Cho ăn / Chăm sóc đàn', icon: '🌾', color: 'bg-purple-50 text-purple-700 border-purple-300' },
-    { id: 've_sinh', name: 'Làm cỏ bờ / Vệ sinh', icon: '🌿', color: 'bg-lime-50 text-lime-700 border-lime-300' },
-    { id: 'khac', name: 'Kiểm tra sâu bệnh / Khác', icon: '📋', color: 'bg-slate-50 text-slate-700 border-slate-300' },
-  ];
-  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>(['tuoi_nuoc']);
-  const [suppliesUsed, setSuppliesUsed] = useState<string>('');
+  const workTypes = diaryWorkTypes;
+  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
+  const [workDescription, setWorkDescription] = useState('');
+  const [materialId, setMaterialId] = useState('');
+  const [materialQuantity, setMaterialQuantity] = useState('');
+  const [phiDays, setPhiDays] = useState('');
+  const diaryMaterials = inventory.filter((item) => item.category !== 'BaoBi');
+  const selectedMaterial = diaryMaterials.find((item) => item.id === materialId);
+  const selectedZone = availableZones.find((zone) => zone.id === selectedZoneId);
 
   const toggleWorkType = (id: string) => {
     if (selectedWorkTypes.includes(id)) {
@@ -38,47 +61,95 @@ export const DiaryAddWizard: React.FC = () => {
     }
   };
 
-  // Step 3: Chụp ảnh trực tiếp bằng camera
-  const samplePhotos = [
-    {
-      name: 'Đồng ruộng lúa trổ bông',
-      url: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Bón phân hữu cơ vi sinh',
-      url: 'https://images.unsplash.com/photo-1589923188900-85dae523342b?w=600&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Vườn gà Đông Tảo thả vườn',
-      url: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=600&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Nhãn lồng sai trĩu cành',
-      url: 'https://images.unsplash.com/photo-1618897996318-5a901fa6ca71?w=600&auto=format&fit=crop&q=80',
-    },
-  ];
-  const [capturedPhoto, setCapturedPhoto] = useState<string>(samplePhotos[0].url);
+  // Step 3: Ảnh do người dùng chụp hoặc chọn từ điện thoại.
+  const [capturedPhoto, setCapturedPhoto] = useState<string>('');
 
   // Step 4: Ghi chú ngắn & xác nhận
-  const [notes, setNotes] = useState<string>('Thời tiết râm mát, cây phát triển tốt.');
+  const [notes, setNotes] = useState<string>('');
+  const [weatherCondition, setWeatherCondition] = useState('');
+  const [weatherSuggestedAt, setWeatherSuggestedAt] = useState<string | undefined>();
+  const [weatherStatus, setWeatherStatus] = useState('');
+  const weatherEdited = useRef(false);
+  const weatherAttempted = useRef(false);
+
+  const updatePerformedAt = (value: string) => {
+    if (value.slice(0, 10) !== performedAt.slice(0, 10) && !weatherEdited.current) {
+      setWeatherCondition('');
+      setWeatherSuggestedAt(undefined);
+      weatherAttempted.current = false;
+    }
+    setPerformedAt(value);
+  };
+
+  const loadWeather = async () => {
+    setWeatherStatus('Đang lấy thời tiết tại vị trí hiện tại...');
+    try {
+      const suggestion = await getCurrentWeatherSuggestion();
+      if (!weatherEdited.current) {
+        setWeatherCondition(suggestion.text);
+        setWeatherSuggestedAt(suggestion.observedAt);
+      }
+      setWeatherStatus('Gợi ý thời tiết hôm nay tại vị trí hiện tại. Có thể sửa lại theo thực tế.');
+    } catch {
+      setWeatherStatus('Không lấy được thời tiết hoặc vị trí. Vui lòng nhập điều kiện thực tế.');
+    }
+  };
+
+  useEffect(() => {
+    if (step === 4 && !weatherAttempted.current) {
+      weatherAttempted.current = true;
+      if (performedAt.slice(0, 10) === todayStr) {
+        void loadWeather();
+      } else {
+        setWeatherStatus('Nhật ký ngày khác hôm nay: vui lòng nhập thời tiết thực tế của ngày thực hiện.');
+      }
+    }
+  }, [step]);
+
+  const handlePhoto = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn tệp ảnh.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setCapturedPhoto(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  };
 
   const handleNext = () => {
     if (step === 1) {
-      speakText('Bước 2: Bác có thể chạm chọn một hoặc nhiều công việc bác đã làm trong buổi ra đồng hôm nay nhé.');
+      if (availableZones.length === 0 || !selectedZoneId) {
+        alert(currentRole === 'R06' ? 'Hộ chưa được HTX giao vùng sản xuất nào.' : 'HTX chưa có vùng sản xuất để ghi nhật ký.');
+        return;
+      }
+      if (!performedAt || Number.isNaN(new Date(performedAt).getTime())) {
+        alert('Vui lòng chọn ngày và giờ thực hiện hợp lệ.');
+        return;
+      }
+
       setStep(2);
     } else if (step === 2) {
       if (selectedWorkTypes.length === 0) {
         alert('Bác hãy chọn ít nhất 1 công việc đã làm!');
         return;
       }
+      if (materialId && (!Number.isFinite(Number(materialQuantity)) || Number(materialQuantity) <= 0)) {
+        alert('Vui lòng nhập số lượng vật tư lớn hơn 0.');
+        return;
+      }
+      if (phiDays && (!Number.isInteger(Number(phiDays)) || Number(phiDays) < 0)) {
+        alert('Thời gian cách ly PHI phải là số ngày không âm.');
+        return;
+      }
       const chosenNames = workTypes
         .filter((w) => selectedWorkTypes.includes(w.id))
         .map((w) => w.name)
         .join(', ');
-      speakText(`Bác đã chọn ${selectedWorkTypes.length} công việc: ${chosenNames}. Bước 3 là chụp ảnh thực tế tại ruộng.`);
+
       setStep(3);
     } else if (step === 3) {
-      speakText('Bước 4: Bác kiểm tra lại các công việc đã chọn và bấm nút Lưu nhật ký để hoàn thành.');
+
       setStep(4);
     }
   };
@@ -90,26 +161,45 @@ export const DiaryAddWizard: React.FC = () => {
   };
 
   const handleSave = () => {
-    const zone = farmZones.find((z) => z.id === selectedZoneId) || farmZones[0];
+    const zone = availableZones.find((z) => z.id === selectedZoneId);
+    if (!zone) {
+      alert('Không tìm thấy vùng sản xuất hợp lệ. Không thể lưu nhật ký với mã vùng không xác định.');
+      return;
+    }
     const chosen = workTypes.filter((w) => selectedWorkTypes.includes(w.id));
     const combinedName = chosen.map((w) => w.name).join(' • ');
     const combinedIcon = chosen.map((w) => w.icon).join(' ');
 
-    addDiary({
+    const result = addDiary({
       htxId: currentHTX.id,
-      farmZoneId: zone ? zone.id : 'fz-01',
-      farmZoneName: zone ? zone.name : 'Thửa ruộng chính',
-      date: selectedDate,
+      farmZoneId: zone.id,
+      farmZoneName: zone.name,
+      date: performedAt.slice(0, 10),
+      performedAt,
       workType: selectedWorkTypes[0],
       workTypes: selectedWorkTypes,
       workTypeName: combinedName || 'Công việc đồng ruộng',
       workTypeIcon: combinedIcon || '🌾',
-      suppliesUsed: suppliesUsed.trim() || undefined,
+      workDescription: workDescription.trim() || undefined,
+      materialId: selectedMaterial?.id,
+      materialQuantity: selectedMaterial ? Number(materialQuantity) : undefined,
+      materialUnit: selectedMaterial?.unit,
+      suppliesUsed: selectedMaterial ? `${materialQuantity} ${selectedMaterial.unit} ${selectedMaterial.name}` : undefined,
+      phiDays: phiDays ? Number(phiDays) : undefined,
+      weatherCondition: weatherCondition.trim() || undefined,
+      weatherSuggestedAt,
+      subjectOwnerId: zone.ownerId,
+      subjectOwnerName: zone.ownerName,
       photoUrl: capturedPhoto,
       notes: notes.trim(),
     });
 
-    speakText('Nhật ký đã được lưu thành công! Cảm ơn bác đã hoàn thành ghi chép hôm nay.');
+    if (!result.success) {
+      alert(result.message || 'Không lưu được nhật ký.');
+      return;
+    }
+
+
     navigateTo('diary_list');
   };
 
@@ -148,16 +238,16 @@ export const DiaryAddWizard: React.FC = () => {
           <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-5">
             <div>
               <label className="block text-lg font-bold text-slate-900 mb-2">
-                1. Ngày làm việc <span className="text-red-500">*</span>
+                1. Ngày và giờ thực hiện <span className="text-red-500">*</span>
               </label>
 
               {/* Quick Preset Buttons for Elderly */}
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedDate(todayStr)}
+                  onClick={() => updatePerformedAt(localDateTime(new Date()))}
                   className={`py-3 rounded-2xl font-bold text-base border-2 transition-all ${
-                    selectedDate === todayStr
+                    performedAt.slice(0, 10) === todayStr
                       ? 'bg-emerald-700 text-white border-emerald-800 shadow-md'
                       : 'bg-slate-50 text-slate-700 border-slate-300'
                   }`}
@@ -169,10 +259,10 @@ export const DiaryAddWizard: React.FC = () => {
                   onClick={() => {
                     const yesterday = new Date();
                     yesterday.setDate(yesterday.getDate() - 1);
-                    setSelectedDate(yesterday.toISOString().split('T')[0]);
+                    updatePerformedAt(localDateTime(yesterday));
                   }}
                   className={`py-3 rounded-2xl font-bold text-base border-2 transition-all ${
-                    selectedDate !== todayStr
+                    performedAt.slice(0, 10) !== todayStr
                       ? 'bg-emerald-700 text-white border-emerald-800 shadow-md'
                       : 'bg-slate-50 text-slate-700 border-slate-300'
                   }`}
@@ -182,9 +272,9 @@ export const DiaryAddWizard: React.FC = () => {
               </div>
 
               <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                type="datetime-local"
+                value={performedAt}
+                onChange={(e) => updatePerformedAt(e.target.value)}
                 className="w-full h-14 px-4 rounded-2xl border-2 border-slate-300 text-lg font-bold text-slate-800 bg-slate-50 focus:border-emerald-600 focus:outline-none"
               />
             </div>
@@ -193,22 +283,44 @@ export const DiaryAddWizard: React.FC = () => {
               <label className="block text-lg font-bold text-slate-900 mb-2">
                 2. Vùng sản xuất / Thửa ruộng <span className="text-red-500">*</span>
               </label>
-              <select
-                value={selectedZoneId}
-                onChange={(e) => setSelectedZoneId(e.target.value)}
-                className="w-full h-14 px-4 rounded-2xl border-2 border-slate-300 text-base font-bold text-slate-800 bg-slate-50 focus:border-emerald-600 focus:outline-none"
-              >
-                {farmZones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.name} ({z.variety})
-                  </option>
-                ))}
-              </select>
+              {availableZones.length === 0 ? (
+                <div className="p-4 bg-amber-50 rounded-2xl border-2 border-amber-300 text-sm text-amber-950 space-y-2">
+                  <div className="font-extrabold flex items-center gap-1.5 text-amber-900">
+                    <span>⚠️</span> Chưa có vùng sản xuất phù hợp
+                  </div>
+                  <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                    {currentRole === 'R06' ? `Hộ ${currentUser.name} chưa được giao vùng sản xuất. Vui lòng liên hệ cán bộ kỹ thuật HTX.` : 'HTX chưa có vùng sản xuất. Hãy tạo vùng và gán hộ phụ trách trước khi ghi nhật ký.'}
+                  </p>
+                </div>
+              ) : (
+                <select
+                  value={selectedZoneId}
+                  onChange={(e) => setSelectedZoneId(e.target.value)}
+                  className="w-full h-14 px-4 rounded-2xl border-2 border-slate-300 text-base font-bold text-slate-800 bg-slate-50 focus:border-emerald-600 focus:outline-none"
+                >
+                  {availableZones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      [{z.zoneCode || 'MSVT'}] {z.name} ({z.variety}) — {z.ownerName}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {selectedZone && (
+                <div className="mt-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-950">
+                  <strong>Hộ phụ trách vùng:</strong> {selectedZone.ownerName}
+                  {currentRole === 'R03' && <span className="block text-xs mt-1">Bạn đang ghi hộ cho thành viên này. Nhật ký sẽ ghi rõ người ghi là cán bộ kỹ thuật.</span>}
+                </div>
+              )}
             </div>
 
             <button
               onClick={handleNext}
-              className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-xl font-bold shadow-lg shadow-emerald-700/30 flex items-center justify-center gap-2 mt-4"
+              disabled={availableZones.length === 0}
+              className={`w-full py-4 rounded-2xl text-xl font-bold flex items-center justify-center gap-2 mt-4 transition-all ${
+                availableZones.length === 0
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  : 'bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white shadow-lg shadow-emerald-700/30'
+              }`}
             >
               <span>Tiếp tục: Bước 2</span>
               <span>➜</span>
@@ -294,17 +406,57 @@ export const DiaryAddWizard: React.FC = () => {
               })}
             </div>
 
-            {/* Vật tư sử dụng */}
+            <div className="pt-2">
+              <label className="block text-base font-bold text-slate-800 mb-1">Mô tả nội dung công việc:</label>
+              <textarea
+                value={workDescription}
+                onChange={(e) => setWorkDescription(e.target.value)}
+                rows={3}
+                placeholder="Ví dụ: Đã hoàn thành bón phân theo đúng liều lượng chỉ dẫn."
+                className="w-full p-3 rounded-2xl border-2 border-slate-300 text-base text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
+              />
+            </div>
+
             <div className="pt-2">
               <label className="block text-base font-bold text-slate-800 mb-1">
-                Vật tư đã dùng chung (tùy chọn):
+                Vật tư sử dụng (từ danh mục chuẩn):
               </label>
-              <input
-                type="text"
-                value={suppliesUsed}
-                onChange={(e) => setSuppliesUsed(e.target.value)}
-                placeholder="Ví dụ: 25kg phân Quế Lâm, Nước mương số 2..."
+              <select
+                value={materialId}
+                onChange={(e) => { setMaterialId(e.target.value); setMaterialQuantity(''); }}
                 className="w-full h-13 px-4 rounded-2xl border-2 border-slate-300 text-base font-medium text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
+              >
+                <option value="">Không dùng vật tư</option>
+                {diaryMaterials.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.unit})</option>)}
+              </select>
+            </div>
+            {selectedMaterial && (
+              <div>
+                <label className="block text-base font-bold text-slate-800 mb-1">Số lượng & đơn vị <span className="text-red-500">*</span></label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="any"
+                    value={materialQuantity}
+                    onChange={(e) => setMaterialQuantity(e.target.value)}
+                    className="w-full h-13 px-4 rounded-2xl border-2 border-slate-300 bg-slate-50"
+                    placeholder="Số lượng"
+                  />
+                  <span className="font-semibold text-slate-700 min-w-20">{selectedMaterial.unit}</span>
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="block text-base font-bold text-slate-800 mb-1">Thời gian cách ly PHI (ngày, nếu có):</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={phiDays}
+                onChange={(e) => setPhiDays(e.target.value)}
+                className="w-full h-13 px-4 rounded-2xl border-2 border-slate-300 bg-slate-50"
+                placeholder="Ví dụ: 14"
               />
             </div>
 
@@ -330,51 +482,29 @@ export const DiaryAddWizard: React.FC = () => {
         {step === 3 && (
           <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">Chụp ảnh đồng ruộng thực tế</h3>
+              <h3 className="text-lg font-bold text-slate-900">Hình ảnh hiện trường thực tế</h3>
               <p className="text-xs text-slate-500">
                 Hình ảnh minh chứng quá trình canh tác theo chuẩn VietGAP
               </p>
             </div>
 
-            {/* Camera Viewfinder Simulation */}
-            <div className="relative aspect-video rounded-3xl overflow-hidden border-4 border-slate-800 bg-slate-900 shadow-inner flex items-center justify-center">
-              <img
-                src={capturedPhoto}
-                alt="Ảnh chụp nhật ký"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-3 left-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 backdrop-blur">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                <span>CAMERA ĐỒNG RUỘNG</span>
-              </div>
-              <div className="absolute bottom-3 left-3 right-3 text-center bg-black/50 text-white text-xs py-1 rounded-xl backdrop-blur">
-                {selectedDate} • Vị trí: Xã An Ninh, Tiền Lữ, Hưng Yên
-              </div>
+            <div className="relative aspect-video rounded-3xl overflow-hidden border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center">
+              {capturedPhoto ? <img src={capturedPhoto} alt="Ảnh hiện trường" className="w-full h-full object-cover" /> : <span className="text-slate-500 text-sm">Chưa chọn ảnh hiện trường</span>}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="px-3 py-3 text-center rounded-2xl bg-emerald-700 text-white font-bold cursor-pointer">
+                📷 Chụp ảnh
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhoto(e.target.files?.[0])} />
+              </label>
+              <label className="px-3 py-3 text-center rounded-2xl bg-slate-200 text-slate-800 font-bold cursor-pointer">
+                🖼️ Chọn từ máy
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => handlePhoto(e.target.files?.[0])} />
+              </label>
             </div>
 
-            {/* Quick photo chooser */}
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-slate-700">
-                Chụp ảnh mẫu hoặc chọn ảnh từ đồng ruộng:
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {samplePhotos.map((p, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setCapturedPhoto(p.url)}
-                    className={`p-2 rounded-xl border text-left flex items-center gap-2 transition-all ${
-                      capturedPhoto === p.url
-                        ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-500/20'
-                        : 'bg-slate-50 border-slate-200'
-                    }`}
-                  >
-                    <img src={p.url} alt={p.name} className="w-10 h-10 rounded-lg object-cover" />
-                    <span className="text-xs font-bold text-slate-800 line-clamp-1">{p.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Ở bước xác nhận, ứng dụng sẽ xin vị trí của điện thoại để gợi ý thời tiết hôm nay. Bạn có thể sửa hoặc tự nhập thời tiết thực tế.
+            </p>
 
             <div className="flex gap-2 pt-2">
               <button
@@ -408,8 +538,13 @@ export const DiaryAddWizard: React.FC = () => {
             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-2.5 text-sm text-slate-800">
               <div className="flex justify-between border-b border-emerald-200 pb-1.5">
                 <span className="font-semibold text-slate-600">Ngày ghi:</span>
-                <span className="font-extrabold text-slate-900">{selectedDate}</span>
+                <span className="font-extrabold text-slate-900">{performedAt.replace('T', ' ')}</span>
               </div>
+              <div className="flex justify-between border-b border-emerald-200 pb-1.5">
+                <span className="font-semibold text-slate-600">Hộ phụ trách:</span>
+                <span className="font-extrabold text-slate-900">{selectedZone?.ownerName}</span>
+              </div>
+              {currentRole === 'R03' && <div className="text-xs font-semibold text-emerald-900">Ghi hộ bởi: {currentUser.name}</div>}
               <div className="flex justify-between border-b border-emerald-200 pb-1.5">
                 <span className="font-semibold text-slate-600">Vùng sản xuất:</span>
                 <span className="font-extrabold text-slate-900">
@@ -435,12 +570,29 @@ export const DiaryAddWizard: React.FC = () => {
                 </div>
               </div>
 
-              {suppliesUsed && (
+              {workDescription.trim() && <div className="border-b border-emerald-200 pb-1.5"><span className="font-semibold text-slate-600">Mô tả: </span>{workDescription.trim()}</div>}
+              {selectedMaterial && (
                 <div className="flex justify-between border-b border-emerald-200 pb-1.5">
                   <span className="font-semibold text-slate-600">Vật tư:</span>
-                  <span className="font-bold text-slate-900">{suppliesUsed}</span>
+                  <span className="font-bold text-slate-900">{materialQuantity} {selectedMaterial.unit} {selectedMaterial.name}</span>
                 </div>
               )}
+              {phiDays && <div><span className="font-semibold text-slate-600">PHI: </span>{phiDays} ngày</div>}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label className="block text-base font-bold text-slate-800">Điều kiện thời tiết:</label>
+                <button type="button" onClick={() => { weatherEdited.current = false; void loadWeather(); }} className="text-xs font-bold text-emerald-700 underline">Lấy thời tiết hiện tại</button>
+              </div>
+              <p className="text-xs text-slate-500 mb-2">{weatherStatus || 'Có thể nhập thời tiết thực tế bằng tay.'}</p>
+              <input
+                type="text"
+                value={weatherCondition}
+                onChange={(e) => { weatherEdited.current = true; setWeatherCondition(e.target.value); setWeatherSuggestedAt(undefined); }}
+                placeholder="Ví dụ: Nắng ráo 29°C, gió nhẹ"
+                className="w-full p-3 rounded-2xl border-2 border-slate-300 text-base text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
+              />
             </div>
 
             <div>

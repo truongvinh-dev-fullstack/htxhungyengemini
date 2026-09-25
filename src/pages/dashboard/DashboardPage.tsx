@@ -18,6 +18,20 @@ export const DashboardPage: React.FC = () => {
   const myCompletedOrders = myOrders.filter((o) => o.status === 'Hoàn thành');
   const myRevenue = myCompletedOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
+  const htxMembers = members.filter((m) => m.htxId === currentHTX.id);
+  const activeMembers = htxMembers.filter((m) => m.status === 'active');
+  const inactiveMembers = htxMembers.filter((m) => m.status === 'inactive');
+  const htxZones = farmZones.filter((z) => z.htxId === currentHTX.id);
+
+  const villageStats = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    htxMembers.forEach((m) => {
+      const v = m.address || 'Khu trung tâm HTX';
+      map[v] = (map[v] || 0) + 1;
+    });
+    return Object.entries(map).map(([name, count]) => ({ name, count }));
+  }, [htxMembers]);
+
   // CN-3.4.3: 3 tabs Báo cáo quản trị cho Lãnh đạo HTX (R02)
   const [reportTab, setReportTab] = useState<'members' | 'production' | 'sales'>('production');
   const [timeRange, setTimeRange] = useState<'month' | 'quarter' | 'year'>('month');
@@ -30,8 +44,6 @@ export const DashboardPage: React.FC = () => {
         return 'Báo cáo Doanh thu & Bán hàng';
       case 'R03':
         return 'Báo cáo Kỹ thuật & Mùa vụ';
-      case 'R05':
-        return 'Báo cáo Tổ sản xuất';
       case 'R06':
       default:
         return 'Báo cáo mùa vụ của tôi';
@@ -127,41 +139,35 @@ export const DashboardPage: React.FC = () => {
                   <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
                     <span className="text-2xl">👥</span>
                     <span className="text-xs font-bold text-slate-500 block">Tổng thành viên</span>
-                    <span className="text-2xl font-extrabold text-slate-900">{members.length || 128}</span>
-                    <span className="text-[11px] text-emerald-700 font-bold block">100% chính thức</span>
+                    <span className="text-2xl font-extrabold text-slate-900">{htxMembers.length}</span>
+                    <span className="text-[11px] text-emerald-700 font-bold block">100% hồ sơ chính thức</span>
                   </div>
                   <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
-                    <span className="text-2xl">🌱</span>
-                    <span className="text-xs font-bold text-slate-500 block">Số tổ sản xuất</span>
-                    <span className="text-2xl font-extrabold text-slate-900">3 tổ</span>
-                    <span className="text-[11px] text-blue-700 font-bold block">Đầy đủ tổ trưởng</span>
+                    <span className="text-2xl">✅</span>
+                    <span className="text-xs font-bold text-slate-500 block">Đang hoạt động</span>
+                    <span className="text-2xl font-extrabold text-slate-900">{activeMembers.length} hộ</span>
+                    <span className="text-[11px] text-blue-700 font-bold block">
+                      {inactiveMembers.length > 0 ? `${inactiveMembers.length} hộ tạm ngừng` : 'Tất cả đang hoạt động'}
+                    </span>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-3">
-                  <h4 className="text-base font-extrabold text-slate-900">Phân bố thành viên theo tổ</h4>
+                  <h4 className="text-base font-extrabold text-slate-900">Phân bố thành viên theo địa bàn</h4>
                   <div className="space-y-2.5 pt-1">
-                    <div className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-bold text-slate-800">Tổ 1 - Canh tác chính</div>
-                        <div className="text-xs text-slate-500">Tổ trưởng: Bác Nguyễn Văn Thắng</div>
-                      </div>
-                      <span className="text-sm font-black text-emerald-800">45 hộ</span>
-                    </div>
-                    <div className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-bold text-slate-800">Tổ 2 - Giống chất lượng cao</div>
-                        <div className="text-xs text-slate-500">Tổ trưởng: Bác Trần Văn Tuấn</div>
-                      </div>
-                      <span className="text-sm font-black text-emerald-800">42 hộ</span>
-                    </div>
-                    <div className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-bold text-slate-800">Tổ 3 - Mở rộng hữu cơ</div>
-                        <div className="text-xs text-slate-500">Tổ trưởng: Bác Hoàng Thị Mai</div>
-                      </div>
-                      <span className="text-sm font-black text-emerald-800">41 hộ</span>
-                    </div>
+                    {villageStats.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic">Chưa có dữ liệu phân bố địa bàn.</p>
+                    ) : (
+                      villageStats.map((item, idx) => (
+                        <div key={idx} className="p-3 bg-slate-50 rounded-2xl flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-bold text-slate-800">{item.name}</div>
+                            <div className="text-xs text-slate-500">Địa bàn canh tác HTX</div>
+                          </div>
+                          <span className="text-sm font-black text-emerald-800">{item.count} hộ</span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -175,67 +181,60 @@ export const DashboardPage: React.FC = () => {
                   <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
                     <span className="text-2xl">👥</span>
                     <span className="text-xs font-bold text-slate-500 block">Tổng thành viên</span>
-                    <span className="text-2xl font-extrabold text-slate-900">{members.length || 128}</span>
-                    <span className="text-[11px] text-emerald-700 font-bold block">+3 hộ tháng này</span>
+                    <span className="text-2xl font-extrabold text-slate-900">{htxMembers.length}</span>
+                    <span className="text-[11px] text-emerald-700 font-bold block">{activeMembers.length} đang canh tác</span>
                   </div>
 
                   <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
                     <span className="text-2xl">🌾</span>
-                    <span className="text-xs font-bold text-slate-500 block">Quy mô canh tác</span>
-                    <span className="text-2xl font-extrabold text-slate-900">185 ha</span>
-                    <span className="text-[11px] text-emerald-700 font-bold block">100% VietGAP</span>
+                    <span className="text-xs font-bold text-slate-500 block">Quy mô sản xuất</span>
+                    <span className="text-2xl font-extrabold text-slate-900">
+                      {currentHTX.id === 'anninh' ? '185 ha' : currentHTX.id === 'dongtao' ? '45.000 con' : '120 ha & ao'}
+                    </span>
+                    <span className="text-[11px] text-emerald-700 font-bold block">100% đạt chuẩn</span>
                   </div>
 
                   <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
                     <span className="text-2xl">🚜</span>
-                    <span className="text-xs font-bold text-slate-500 block">Sản lượng dự kiến</span>
-                    <span className="text-2xl font-extrabold text-slate-900">920 tấn</span>
-                    <span className="text-[11px] text-amber-700 font-bold block">Thu hoạch vụ Xuân</span>
+                    <span className="text-xs font-bold text-slate-500 block">Sản phẩm chủ lực</span>
+                    <span className="text-xs font-extrabold text-slate-900 line-clamp-1 block">{currentHTX.productType}</span>
+                    <span className="text-[11px] text-amber-700 font-bold block">Mùa vụ hiện hành</span>
                   </div>
 
                   <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
                     <span className="text-2xl">🗺️</span>
-                    <span className="text-xs font-bold text-slate-500 block">Thửa ruộng / vùng</span>
-                    <span className="text-2xl font-extrabold text-slate-900">{farmZones.length} vùng</span>
-                    <span className="text-[11px] text-emerald-700 font-bold block">Đã cấp mã QR</span>
+                    <span className="text-xs font-bold text-slate-500 block">Số thửa / Vùng canh tác</span>
+                    <span className="text-2xl font-extrabold text-slate-900">{htxZones.length} vùng</span>
+                    <span className="text-[11px] text-emerald-700 font-bold block">Độc lập 1 cấp</span>
                   </div>
                 </div>
 
-                {/* Simple Bar Chart Visualization */}
+                {/* Single-level production breakdown by zone / crop */}
                 <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-3">
                   <h4 className="text-base font-extrabold text-slate-900">
-                    Sản lượng theo từng tổ sản xuất (tấn)
+                    Theo dõi quy mô & dự kiến thu hoạch theo thửa / vùng
                   </h4>
-                  <div className="space-y-2 pt-1">
-                    <div>
-                      <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
-                        <span>Tổ 1 - Lúa sạch (Bác Thắng)</span>
-                        <span>320 tấn (100%)</span>
-                      </div>
-                      <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                        <div className="bg-emerald-600 h-full rounded-full" style={{ width: '85%' }} />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
-                        <span>Tổ 2 - Lúa đặc sản</span>
-                        <span>280 tấn (88%)</span>
-                      </div>
-                      <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                        <div className="bg-amber-500 h-full rounded-full" style={{ width: '75%' }} />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
-                        <span>Tổ 3 - Giống lúa mới</span>
-                        <span>190 tấn (60%)</span>
-                      </div>
-                      <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                        <div className="bg-blue-500 h-full rounded-full" style={{ width: '55%' }} />
-                      </div>
-                    </div>
+                  <div className="space-y-3 pt-1">
+                    {htxZones.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic">Chưa có dữ liệu vùng sản xuất.</p>
+                    ) : (
+                      htxZones.map((zone) => (
+                        <div key={zone.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-extrabold text-slate-900">{zone.name}</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                              {zone.status}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-600 font-medium">
+                            Giống/Loại: <strong className="text-slate-800">{zone.variety}</strong> • Quy mô: <strong className="text-slate-800">{zone.areaOrQuantity}</strong>
+                          </div>
+                          <div className="text-xs text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200 font-medium">
+                            {zone.forecastYield}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -369,15 +368,15 @@ export const DashboardPage: React.FC = () => {
           </div>
         )}
 
-        {(currentRole === 'R06' || currentRole === 'R05') && (
-          /* CN-3.4.2: Dashboard cho thành viên / Hộ nông dân (R06) & Tổ trưởng (R05) */
+        {currentRole === 'R06' && (
+          /* CN-3.4.2: Dashboard cho thành viên / Hộ nông dân (R06) */
           <div className="space-y-4">
             <div className="bg-gradient-to-r from-agri-800 to-agri-700 text-white rounded-3xl p-5 shadow-lg space-y-1">
               <span className="text-xs uppercase font-extrabold tracking-wider text-agri-200">
-                {currentRole === 'R05' ? 'KẾT QUẢ SẢN XUẤT TỔ' : 'KẾT QUẢ SẢN XUẤT CỦA BÁC'}
+                KẾT QUẢ SẢN XUẤT CỦA BÁC
               </span>
               <h3 className="text-2xl font-extrabold">{currentUser.name}</h3>
-              <p className="text-xs text-agri-100">{currentUser.team} • Vụ Xuân 2026</p>
+              <p className="text-xs text-agri-100">{currentHTX.name} • Mùa vụ 2026</p>
             </div>
 
             {/* 3 BIG KPI CARDS */}

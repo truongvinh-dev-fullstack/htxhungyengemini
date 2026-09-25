@@ -1,7 +1,10 @@
 # HƯỚNG DẪN MỞ VÀ TRẢI NGHIỆM DEMO ZALO MINI APP
 ## Hệ thống CSDL Thông tin Sản xuất & Truy xuất Nguồn gốc — 03 HTX Nông nghiệp Hưng Yên
 **Tài liệu tham chiếu:** Module 3 — SRS v1.1 (*SRS_HeThong_HTX_HungYen_v1.1_Zalo_Login.md*)  
-**Đối tượng phục vụ:** Thành viên/Hộ nông dân cao tuổi (50–70+ tuổi), Tổ trưởng sản xuất (R05), Kế toán/Kho (R04), Ban Quản trị HTX (R02), Sở NN&PTNT Hưng Yên.
+> **Lưu ý cập nhật phạm vi:**  
+> - **Vùng và thửa:** Bản ghi sản xuất 1 cấp độc lập (`FarmZone`), không có cấu trúc vùng cha → thửa con.  
+> - **Bỏ tổ và vai trò R05 (Tổ trưởng):** Mini App gồm 4 vai trò chính: `R06 Hộ dân`, `R04 Kế toán/Kho`, `R03 Cán bộ Kỹ thuật`, `R02 Ban Quản trị HTX`.  
+> - **Quản lý thành viên chỉ đọc:** Mini App chỉ xem danh sách & hồ sơ thành viên. Việc thêm, phê duyệt và tự đăng ký thành viên được thực hiện trên Cổng thông tin Quản trị Web (Web Portal).
 
 ---
 
@@ -37,7 +40,7 @@ Hệ thống đã chuẩn bị sẵn dữ liệu mẫu cho cả **3 HTX** đại
 
 ### Thanh chuyển đổi nhanh (Role & HTX Switcher)
 Ở góc trên cùng của ứng dụng luôn có thanh ghim màu vàng hổ phách **"DEMO SỞ NN&PTNT"**:
-* Bấm vào chữ **"Đổi vai trò / HTX ▼"** để mở menu chuyển đổi 1-chạm giữa 4 vai trò (`R06 Hộ dân`, `R05 Tổ trưởng`, `R04 Kế toán/Kho`, `R02 Lãnh đạo HTX`) và chuyển qua lại giữa 3 HTX mà không cần đăng xuất.
+* Bấm vào chữ **"Đổi vai trò / HTX ▼"** để mở menu chuyển đổi 1-chạm giữa 4 vai trò (`R06 Hộ dân`, `R04 Kế toán/Kho`, `R03 Cán bộ Kỹ thuật`, `R02 Lãnh đạo HTX`) và chuyển qua lại giữa 3 HTX mà không cần đăng xuất.
 
 ---
 
@@ -122,17 +125,12 @@ Hệ thống đã chuẩn bị sẵn dữ liệu mẫu cho cả **3 HTX** đại
 
 ---
 
-### KỊCH BẢN 7: TRẢI NGHIỆM VAI TRÒ TỔ TRƯỞNG (R05) & KHO (R04) & LÃNH ĐẠO (R02) (ƯU TIÊN 3)
+### KỊCH BẢN 7: TRẢI NGHIỆM VAI TRÒ KỸ THUẬT (R03), KẾ TOÁN (R04) & BAN QUẢN TRỊ (R02)
 
-#### A. Trải nghiệm vai trò R05 Tổ trưởng sản xuất:
-1. Trên thanh ghim đầu trang, bấm *"Đổi vai trò / HTX ▼"* $\rightarrow$ Chọn **"R05: Tổ trưởng"**.
-2. Trang chủ tự động xuất hiện thêm ô: **"👥 Thành viên HTX (Chỉ Tổ trưởng)"**.
-3. Bấm vào ô này, quan sát banner màu cam: *"Yêu cầu đăng ký mới: Có 2 hộ đang chờ bác phê duyệt"*.
-4. Bấm vào banner để mở **Màn hình phê duyệt (CN-3.2.4)**:
-   * Kiểm tra thông tin hộ bác Đỗ Văn Hưng (Thôn An Xá).
-   * Thao tác trực tiếp bằng **2 nút bấm cực lớn**:
-     * Bấm **"✓ PHÊ DUYỆT"** (Màu xanh): Chấp thuận thành viên vào tổ.
-     * Bấm **"✕ TỪ CHỐI"** (Màu đỏ): Chọn lý do từ chối mẫu.
+#### A. Trải nghiệm vai trò R03 Cán bộ Kỹ thuật:
+1. Trên thanh ghim đầu trang, bấm *"Đổi vai trò / HTX ▼"* $\rightarrow$ Chọn **"R03: Cán bộ Kỹ thuật"**.
+2. Trang chủ tự động hiển thị các chức năng: Giám sát vùng sản xuất, Lô sơ chế, Đóng gói dán tem và Quét thẩm định mã QR.
+3. Bấm vào **"Danh sách thành viên"**: Xem hồ sơ xã viên, số điện thoại, địa chỉ và các thửa ruộng canh tác (quyền xem chỉ đọc).
 
 #### B. Trải nghiệm vai trò R04 Kế toán / Quản lý kho:
 1. Trên thanh ghim, chọn **"R04: Kế toán / Kho"**.
@@ -145,11 +143,10 @@ Hệ thống đã chuẩn bị sẵn dữ liệu mẫu cho cả **3 HTX** đại
 
 #### C. Trải nghiệm vai trò R02 Ban Quản trị HTX:
 1. Trên thanh ghim, chọn **"R02: Ban Quản trị"**.
-2. Bấm vào ô **"📊 Báo cáo của tôi"**: Màn hình tự động hiển thị **Dashboard Lãnh đạo toàn HTX**:
-   * Tổng 128 thành viên, 185 ha canh tác đạt 100% VietGAP.
-   * Dự báo sản lượng toàn xã: 920 tấn.
-   * Doanh thu quý: 2,85 tỷ đồng.
-   * Biểu đồ so sánh sản lượng giữa Tổ 1, Tổ 2 và Tổ 3.
+2. Bấm vào ô **"📊 Bảng điều khiển HTX"**: Màn hình tự động hiển thị **Báo cáo quản trị toàn HTX**:
+   * *Tab Thành viên:* Tổng thành viên, số hộ đang hoạt động và biểu đồ phân bố hộ theo địa bàn (Thôn / Xóm).
+   * *Tab Sản xuất:* Quy mô sản xuất, số lượng vùng/thửa độc lập (1 cấp), theo dõi quy mô và dự kiến thu hoạch từng thửa.
+   * *Tab Bán hàng:* Doanh thu thực thu từ các đơn hàng hoàn thành và giá trị tồn kho.
 
 ---
 

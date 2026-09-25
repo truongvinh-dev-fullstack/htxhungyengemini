@@ -4,11 +4,28 @@ import { Header } from '../../components/Header';
 import { CounterInput } from '../../components/CounterInput';
 
 export const HarvestAdd: React.FC = () => {
-  const { farmZones, addHarvest, navigateTo, speakText, currentHTX } = useApp();
+  const { farmZones, addHarvest, navigateTo, currentHTX, currentRole, currentUser } = useApp();
+
+  const availableZones = React.useMemo(() => {
+    return farmZones.filter((z) => {
+      if (z.htxId !== currentHTX.id) return false;
+      if (currentRole === 'R06') {
+        return z.ownerId === currentUser.id;
+      }
+      return true;
+    });
+  }, [farmZones, currentHTX.id, currentRole, currentUser.id]);
 
   const [selectedZoneId, setSelectedZoneId] = useState<string>(
-    farmZones.length > 0 ? farmZones[0].id : ''
+    availableZones.length > 0 ? availableZones[0].id : ''
   );
+
+  React.useEffect(() => {
+    if (availableZones.length > 0 && !selectedZoneId) {
+      setSelectedZoneId(availableZones[0].id);
+    }
+  }, [availableZones, selectedZoneId]);
+
   const [harvestDate, setHarvestDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
@@ -23,12 +40,21 @@ export const HarvestAdd: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const zone = farmZones.find((z) => z.id === selectedZoneId) || farmZones[0];
+    if (availableZones.length === 0 || !selectedZoneId) {
+      alert('Hộ gia đình bác chưa được HTX gán vùng sản xuất nào. Không thể khai báo thu hoạch.');
+      return;
+    }
+
+    const zone = availableZones.find((z) => z.id === selectedZoneId);
+    if (!zone) {
+      alert('Không tìm thấy vùng sản xuất hợp lệ.');
+      return;
+    }
 
     addHarvest({
       htxId: currentHTX.id,
-      farmZoneId: zone ? zone.id : 'fz-01',
-      farmZoneName: zone ? zone.name : 'Thửa ruộng chính',
+      farmZoneId: zone.id,
+      farmZoneName: zone.name,
       date: harvestDate,
       yieldQuantity: quantity,
       unit,
@@ -36,7 +62,7 @@ export const HarvestAdd: React.FC = () => {
       notes,
     });
 
-    speakText('Đã lưu lô thu hoạch thành công!');
+
     navigateTo('harvest_list');
   };
 
@@ -53,17 +79,28 @@ export const HarvestAdd: React.FC = () => {
             <label className="block text-base font-bold text-slate-800 mb-1.5">
               1. Chọn Vùng thu hoạch: <span className="text-red-500">*</span>
             </label>
-            <select
-              value={selectedZoneId}
-              onChange={(e) => setSelectedZoneId(e.target.value)}
-              className="w-full h-14 px-3 rounded-2xl border-2 border-slate-300 text-base font-bold text-slate-900 bg-slate-50 focus:border-orange-600 focus:outline-none"
-            >
-              {farmZones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.name} - {z.variety}
-                </option>
-              ))}
-            </select>
+            {availableZones.length === 0 ? (
+              <div className="p-4 bg-amber-50 rounded-2xl border-2 border-amber-300 text-sm text-amber-950 space-y-2">
+                <div className="font-extrabold flex items-center gap-1.5 text-amber-900">
+                  <span>⚠️</span> Hộ chưa được gán vùng sản xuất
+                </div>
+                <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                  Hộ gia đình <strong>{currentUser.name}</strong> hiện chưa có thửa ruộng/khu chuồng nào được Ban Kỹ thuật HTX cấp mã. Bác vui lòng liên hệ <strong>Cán bộ Kỹ thuật HTX (R03)</strong> để được cấp mã trước khi khai báo thu hoạch.
+                </p>
+              </div>
+            ) : (
+              <select
+                value={selectedZoneId}
+                onChange={(e) => setSelectedZoneId(e.target.value)}
+                className="w-full h-14 px-3 rounded-2xl border-2 border-slate-300 text-base font-bold text-slate-900 bg-slate-50 focus:border-orange-600 focus:outline-none"
+              >
+                {availableZones.map((z) => (
+                  <option key={z.id} value={z.id}>
+                    [{z.zoneCode || 'MSVT'}] {z.name} ({z.variety})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>

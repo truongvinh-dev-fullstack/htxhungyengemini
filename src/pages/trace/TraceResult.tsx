@@ -10,7 +10,7 @@ interface JourneyStep {
 }
 
 export const TraceResult: React.FC = () => {
-  const { screenParams, speakText, navigateTo, packages, harvests, farmZones, diaries, members } = useApp();
+  const { screenParams, navigateTo, packages, harvests, farmZones, diaries, members } = useApp();
   const rawCode = (screenParams?.code || '').trim();
 
   // Helper to safely get farmer name
@@ -52,7 +52,7 @@ export const TraceResult: React.FC = () => {
         name: pkg?.productName || 'Gà đặc sản Đông Tảo thuần chủng chân to tiến vua',
         htx: htx.name,
         location: htx.address,
-        farmer: `${getFarmerName(zone, 'Bác Trần Đình Trọng')} (Tổ 2 chăn nuôi)`,
+        farmer: `${getFarmerName(zone, 'Bác Trần Đình Trọng')} (Hộ thành viên HTX)`,
         zone: zone?.name || 'Khu chuồng nuôi thả vườn Vườn Nhãn (Đàn 450 con)',
         lotCode: harvest?.code || 'TH-DT-2026-001',
         standard: 'OCOP 4 sao • Chuỗi nông sản an toàn Hưng Yên',
@@ -104,7 +104,7 @@ export const TraceResult: React.FC = () => {
         name: 'Gạo thượng hạng ST25 Hưng Yên (Túi 5kg)',
         htx: htx.name,
         location: htx.address,
-        farmer: `${getFarmerName(zone, 'Bác Nguyễn Văn An')} (Tổ 1 Lúa sạch)`,
+        farmer: `${getFarmerName(zone, 'Bác Nguyễn Văn An')} (Hộ thành viên HTX)`,
         zone: zone?.name || 'Thửa Cánh Đồng Chợ (4.200 m²)',
         lotCode: harvest?.code || 'TH-AN-2026-002',
         standard: 'Hữu cơ sinh học • Chuẩn OCOP 4 sao',
@@ -147,7 +147,7 @@ export const TraceResult: React.FC = () => {
       name: pkg?.productName || 'Gạo sạch Bắc Thơm số 7 Hưng Yên (Túi 5kg)',
       htx: htx.name,
       location: htx.address,
-      farmer: `${getFarmerName(zone, 'Bác Nguyễn Văn An')} (Tổ 1 Lúa sạch)`,
+      farmer: `${getFarmerName(zone, 'Bác Nguyễn Văn An')} (Hộ thành viên HTX)`,
       zone: zone?.name || 'Thửa Đầm Bông - Cánh đồng Lớn (3.500 m²)',
       lotCode: harvest?.code || 'TH-AN-2026-001',
       standard: 'VietGAP • OCOP 4 sao • Không hóa chất cấm',
@@ -159,14 +159,6 @@ export const TraceResult: React.FC = () => {
     };
   }, [rawCode, packages, harvests, farmZones, diaries, members]);
 
-  // Voice effect on mount
-  React.useEffect(() => {
-    if (!matchResult) {
-      speakText('Cảnh báo! Mã QR này không tồn tại trên hệ thống dữ liệu Hợp tác xã Hưng Yên.');
-    } else {
-      speakText(`Sản phẩm ${matchResult.name}, sản xuất bởi ${matchResult.htx}. Đạt tiêu chuẩn ${matchResult.standard}.`);
-    }
-  }, [matchResult, speakText]);
 
   // CASE 1: INVALID / UNVERIFIED QR CODE
   if (!matchResult) {
@@ -346,7 +338,7 @@ export const TraceResult: React.FC = () => {
                 navigator.clipboard?.writeText?.(window.location.href);
                 alert('Đã sao chép liên kết truy xuất nguồn gốc. Bác có thể dán gửi qua tin nhắn Zalo!');
               }
-              speakText('Đã chia sẻ thông tin truy xuất nguồn gốc sản phẩm thành công!');
+
             }}
             className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold text-base shadow flex items-center justify-center gap-2"
           >

@@ -1,8 +1,7 @@
 // Data types matching SRS v1.1 Module 3
 
-export type UserRole = 'R06' | 'R05' | 'R04' | 'R03' | 'R02';
+export type UserRole = 'R06' | 'R04' | 'R03' | 'R02';
 // R06: Thành viên / Hộ nông dân
-// R05: Tổ trưởng sản xuất
 // R04: Kế toán / Bán hàng
 // R03: Cán bộ kỹ thuật
 // R02: Ban quản trị HTX
@@ -29,7 +28,6 @@ export interface UserProfile {
   phone: string;
   cccd: string;
   htxId: HTXId;
-  team: string; // Tổ sản xuất
   avatar: string;
   address: string;
   status: 'active' | 'pending' | 'rejected' | 'inactive';
@@ -45,19 +43,27 @@ export interface SeasonHistoryItem {
 }
 
 export interface FarmZone {
-  id: string;
+  id: string; // ID kỹ thuật nội bộ duy nhất (fz-01, fz-02...)
+  zoneCode: string; // Mã số vùng trồng / cơ sở sản xuất (MSVT, VD: MSVT-AN-01)
   htxId: HTXId;
-  ownerId: string;
-  ownerName?: string;
-  name: string; // VD: Thửa Đầm Bông
-  variety: string; // Giống cây/vật nuôi: Bắc Thơm số 7, Gà thuần F1...
-  season: string; // Vụ Xuân 2026
+  ownerId: string; // ID hộ nông dân phụ trách
+  ownerName: string; // Tên hộ nông dân phụ trách
+  name: string; // VD: Thửa Đầm Bông (Cánh đồng Lớn)
+  productionType: 'Trồng trọt' | 'Chăn nuôi' | 'Thủy sản' | 'Cây ăn quả';
+  variety: string; // Giống cây / vật nuôi
+  season: string; // Mùa vụ canh tác
   seasonStartDate?: string;
   seasonEndDate?: string;
-  seasonStage?: string; // VD: "Giai đoạn đẻ nhánh rộ (Ngày 65/115)"
+  seasonStage?: string;
   seasonHistory?: SeasonHistoryItem[];
-  areaOrQuantity: string; // 3.500 m² hoặc 500 con
-  forecastYield: string; // "Dự kiến thu: 2.2 tấn — còn khoảng 25 ngày"
+  areaValue: number; // Giá trị số diện tích / quy mô
+  areaUnit: string; // Đơn vị: m², ha, sào, con, chuồng, lồng
+  areaOrQuantity: string; // Chuỗi hiển thị: "3.500 m² (7 sào Bắc Bộ)"
+  expectedYieldValue: number; // Giá trị số sản lượng dự kiến
+  expectedYieldUnit: string; // Đơn vị: tấn, tạ, kg, con
+  expectedHarvestDate: string; // Ngày thu hoạch dự kiến
+  forecastYield: string; // Chuỗi hiển thị: "Dự kiến thu: 2,1 tấn — còn khoảng 25 ngày"
+  soilOrWaterCondition: string; // Đặc điểm đất thổ nhưỡng hoặc nguồn nước
   status: string;
   imageUrl: string;
   notes: string;
@@ -70,16 +76,27 @@ export interface DiaryEntry {
   farmZoneId: string;
   farmZoneName: string;
   date: string;
+  performedAt?: string; // Giờ thực hiện tại địa phương, dạng YYYY-MM-DDTHH:mm
   workType: string;
   workTypes?: string[];
   workTypeName: string;
   workTypeIcon: string;
   suppliesUsed?: string;
+  workDescription?: string;
+  materialId?: string;
+  materialQuantity?: number;
+  materialUnit?: string;
+  phiDays?: number;
+  weatherCondition?: string;
+  weatherSuggestedAt?: string;
+  subjectOwnerId?: string; // Hộ phụ trách vùng, có thể khác người ghi hộ
+  subjectOwnerName?: string;
   photoUrl: string;
   notes: string;
   createdAt: string; // ISO string
   isLocked: boolean; // Quá 24h hoặc đã mã hóa lưu vết -> không thể sửa
   createdBy: string;
+  createdById?: string;
 }
 
 export interface HarvestLot {
@@ -185,7 +202,6 @@ export interface MemberRequest {
   phone: string;
   cccd: string;
   htxId: HTXId;
-  team?: string;
   village: string;
   applyDate: string;
   status: 'pending' | 'approved' | 'rejected';

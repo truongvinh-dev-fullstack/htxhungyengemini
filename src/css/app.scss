@@ -116,24 +116,7 @@ button:active, .clickable-card:active {
   box-shadow: 0 6px 14px rgba(46, 125, 50, 0.12);
 }
 
-/* Audio help pulse button */
-.voice-help-btn {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1.5px solid #fcd34d;
-  border-radius: 9999px;
-  padding: 8px 16px;
-  font-size: 16px;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.15);
-}
 
-.voice-help-btn:active {
-  background: #fde68a;
-}
 
 /* Number Counter +/- component */
 .counter-box {

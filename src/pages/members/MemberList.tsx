@@ -1,107 +1,84 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
-import { UserProfile } from '../../types';
 
 export const MemberList: React.FC = () => {
-  const { members, memberRequests, navigateTo, currentRole, currentHTX, currentUser } = useApp();
+  const { members, navigateTo, currentHTX } = useApp();
 
   const htxMembers = members.filter((m) => !m.htxId || m.htxId === currentHTX.id);
-  const displayMembers = currentRole === 'R05' && currentUser.team
-    ? htxMembers.filter((m) => m.team === currentUser.team || m.team?.includes(currentUser.team) || currentUser.team?.includes(m.team))
-    : htxMembers;
-
-  const pendingCount = memberRequests.filter(
-    (r) => (!r.htxId || r.htxId === currentHTX.id) && r.status === 'pending'
-  ).length;
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
-        title="Quản lý thành viên tổ"
-        voiceText="Màn hình quản lý thành viên tổ sản xuất. Bác tổ trưởng có thể xem danh sách các hộ thành viên hoặc bấm vào banner chờ duyệt để phê duyệt thành viên mới."
+        title="Danh sách thành viên HTX"
+        voiceText={`Danh sách thành viên chính thức của ${currentHTX.name}. Bác có thể bấm vào từng hộ để xem hồ sơ và thửa ruộng canh tác.`}
       />
 
       <div className="p-4 space-y-4">
-        {/* CN-3.2.4: Approval Banner with Pending Count */}
-        <div
-          onClick={() => navigateTo('members_approval')}
-          className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-3xl p-4 shadow-md flex items-center justify-between cursor-pointer active:scale-98 transition-all"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-2xl font-bold">
-              📝
-            </div>
-            <div>
-              <h3 className="text-lg font-extrabold leading-tight">Yêu cầu đăng ký mới</h3>
-              <p className="text-xs text-amber-100 font-medium mt-0.5">
-                {pendingCount > 0
-                  ? `Có ${pendingCount} hộ đang chờ bác phê duyệt`
-                  : 'Không có yêu cầu chờ duyệt'}
-              </p>
-            </div>
+        {/* HTX Info Summary */}
+        <div className="bg-emerald-800 text-white rounded-3xl p-4 shadow-md flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-extrabold">{currentHTX.name}</h3>
+            <p className="text-xs text-emerald-200 mt-0.5 font-medium">
+              Tổng số {htxMembers.length} hộ thành viên chính thức
+            </p>
           </div>
-          {pendingCount > 0 && (
-            <span className="bg-white text-orange-700 text-sm font-extrabold px-3 py-1.5 rounded-full shadow">
-              Duyệt ngay ({pendingCount})
-            </span>
-          )}
+          <span className="text-3xl">{currentHTX.logo}</span>
         </div>
 
         {/* Member Cards */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-lg font-bold text-slate-800">Thành viên trong tổ</h3>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-semibold">{displayMembers.length} hộ</span>
-              {(currentRole === 'R05' || currentRole === 'R02') && (
-                <button
-                  onClick={() => navigateTo('member_add')}
-                  className="py-1.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow"
-                >
-                  <span>➕</span>
-                  <span>Thêm thành viên</span>
-                </button>
-              )}
-            </div>
+            <h3 className="text-base font-extrabold text-slate-800">Hộ thành viên ({htxMembers.length})</h3>
+            <span className="text-xs text-slate-500 font-semibold">Xem chi tiết ➜</span>
           </div>
 
-          {displayMembers.map((m) => (
-            <div
-              key={m.id}
-              onClick={() => navigateTo('member_detail', { member: m })}
-              className="bg-white rounded-3xl p-4 border-2 border-slate-200 hover:border-emerald-500 active:scale-[0.98] transition-all shadow-sm flex items-center justify-between gap-3 cursor-pointer"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <img
-                  src={m.avatar}
-                  alt={m.name}
-                  className="w-14 h-14 rounded-2xl object-cover border border-slate-200 flex-shrink-0"
-                />
-                <div className="min-w-0">
-                  <h4 className="text-base font-extrabold text-slate-900 truncate">{m.name}</h4>
-                  <p className="text-xs text-slate-500 font-semibold truncate">{m.address}</p>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-emerald-700 font-bold">
-                    <span>📞 {m.phone}</span>
-                    <span>•</span>
-                    <span>{m.team}</span>
+          {htxMembers.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 text-center space-y-2 border border-slate-200">
+              <span className="text-4xl">👥</span>
+              <p className="text-sm font-bold text-slate-700">Chưa có dữ liệu thành viên</p>
+              <p className="text-xs text-slate-500">
+                Hồ sơ thành viên được đồng bộ từ Cổng thông tin Quản trị HTX.
+              </p>
+            </div>
+          ) : (
+            htxMembers.map((m) => (
+              <div
+                key={m.id}
+                onClick={() => navigateTo('member_detail', { member: m })}
+                className="bg-white rounded-3xl p-4 border-2 border-slate-200 hover:border-emerald-500 active:scale-[0.98] transition-all shadow-sm flex items-center justify-between gap-3 cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <img
+                    src={m.avatar}
+                    alt={m.name}
+                    className="w-13 h-13 rounded-2xl object-cover border border-slate-200 flex-shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <h4 className="text-base font-extrabold text-slate-900 truncate">{m.name}</h4>
+                    <p className="text-xs text-slate-500 font-semibold truncate">{m.address}</p>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-emerald-700 font-bold">
+                      <span>📞 {m.phone}</span>
+                      <span>•</span>
+                      <span className="text-slate-600 font-medium">{m.role === 'R06' ? 'Xã viên' : 'Ban quản lý'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <a
-                  href={`tel:${m.phone.replace(/\s+/g, '')}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-lg shadow-sm"
-                  title="Gọi điện thoại"
-                >
-                  📞
-                </a>
-                <span className="text-slate-400 text-xs font-bold">➜</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <a
+                    href={`tel:${m.phone.replace(/\s+/g, '')}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-lg shadow-sm"
+                    title="Gọi điện thoại"
+                  >
+                    📞
+                  </a>
+                  <span className="text-slate-400 text-xs font-bold">➜</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

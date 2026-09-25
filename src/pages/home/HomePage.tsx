@@ -9,32 +9,7 @@ export const HomePage: React.FC = () => {
     currentRole,
     navigateTo,
     todayHasDiary,
-    speakText,
   } = useApp();
-
-  const handleVoiceWelcome = () => {
-    if (currentRole === 'R06') {
-      speakText(
-        `Kính chào bác ${currentUser.name}, thành viên ${currentHTX.name}. Thời tiết Hưng Yên hôm nay 28 độ C, trời râm mát, rất thuận lợi ra đồng. Bác hãy bấm vào ô Sổ nhật ký để ghi chép công việc hôm nay nhé.`
-      );
-    } else if (currentRole === 'R05') {
-      speakText(
-        `Kính chào Tổ trưởng ${currentUser.name}. Mời bác kiểm tra tình hình sản xuất và nhật ký của các thành viên trong tổ hôm nay.`
-      );
-    } else if (currentRole === 'R04') {
-      speakText(
-        `Kính chào ${currentUser.name}, phụ trách Kế toán và Bán hàng HTX. Mời chị kiểm tra kho vật tư và xử lý các đơn hàng nông sản.`
-      );
-    } else if (currentRole === 'R03') {
-      speakText(
-        `Kính chào ${currentUser.name}, Cán bộ kỹ thuật HTX. Mời đồng chí kiểm tra kế hoạch mùa vụ, giám sát quy trình VietGAP và các lô sơ chế đóng gói.`
-      );
-    } else {
-      speakText(
-        `Kính chào ${currentUser.name}, Ban Quản trị ${currentHTX.name}. Mời bác xem báo cáo tổng hợp chỉ số sản xuất, doanh thu và duyệt thành viên HTX.`
-      );
-    }
-  };
 
   const getRoleBadge = () => {
     switch (currentRole) {
@@ -44,8 +19,6 @@ export const HomePage: React.FC = () => {
         return { label: 'Cán bộ Kỹ thuật', color: 'bg-cyan-100 text-cyan-950 border-cyan-300' };
       case 'R04':
         return { label: 'Kế toán / Bán hàng', color: 'bg-amber-100 text-amber-950 border-amber-300' };
-      case 'R05':
-        return { label: 'Tổ trưởng Sản xuất', color: 'bg-teal-100 text-teal-950 border-teal-300' };
       case 'R06':
       default:
         return { label: 'Hộ nông dân / Xã viên', color: 'bg-emerald-100 text-emerald-950 border-emerald-300' };
@@ -173,65 +146,7 @@ export const HomePage: React.FC = () => {
           },
         ];
 
-      case 'R05': // TỔ TRƯỞNG SẢN XUẤT: Thành viên trong tổ, sản xuất trong tổ, theo dõi nhật ký, nhắc việc, hỗ trợ nhập liệu
-        return [
-          {
-            id: 'members',
-            title: 'Thành viên trong tổ',
-            subtitle: 'Quản lý tổ viên & phân công',
-            icon: '👥',
-            color: 'bg-emerald-700 text-white',
-            border: 'hover:border-emerald-600',
-            screen: 'members_list',
-          },
-          {
-            id: 'diary',
-            title: 'Nhật ký tổ viên & Ghi hộ',
-            subtitle: 'Theo dõi & hỗ trợ nhập liệu',
-            icon: '📖',
-            color: 'bg-emerald-100 text-emerald-800',
-            border: 'hover:border-emerald-600',
-            screen: 'diary_list',
-          },
-          {
-            id: 'farm',
-            title: 'Thửa ruộng trong tổ',
-            subtitle: 'Tiến độ canh tác các thửa tổ',
-            icon: '🌾',
-            color: 'bg-amber-100 text-amber-800',
-            border: 'hover:border-amber-600',
-            screen: 'farm_list',
-          },
-          {
-            id: 'harvest',
-            title: 'Thu hoạch của tổ',
-            subtitle: 'Theo dõi sản lượng thu hoạch',
-            icon: '🚜',
-            color: 'bg-orange-100 text-orange-800',
-            border: 'hover:border-orange-600',
-            screen: 'harvest_list',
-          },
-          {
-            id: 'inventory',
-            title: 'Vật tư phân bổ cho tổ',
-            subtitle: 'Theo dõi nhận giống, phân bón',
-            icon: '🏬',
-            color: 'bg-amber-100 text-amber-800',
-            border: 'hover:border-amber-600',
-            screen: 'inventory_list',
-          },
-          {
-            id: 'trace',
-            title: 'Quét mã nguồn gốc',
-            subtitle: 'Kiểm tra tem QR sản phẩm tổ',
-            icon: '📷',
-            color: 'bg-red-100 text-red-800',
-            border: 'hover:border-red-600',
-            screen: 'trace_scan',
-          },
-        ];
-
-      case 'R02': // BAN QUẢN TRỊ HTX: Dashboard, thành viên, mùa vụ, giám sát sản xuất, duyệt, báo cáo
+      case 'R02': // BAN QUẢN TRỊ HTX: Dashboard, thành viên, mùa vụ, giám sát sản xuất, báo cáo
         return [
           {
             id: 'dashboard',
@@ -244,8 +159,8 @@ export const HomePage: React.FC = () => {
           },
           {
             id: 'members',
-            title: 'Thành viên & Duyệt',
-            subtitle: 'Quản lý & duyệt kết nạp HTX',
+            title: 'Danh sách Thành viên',
+            subtitle: 'Xem hồ sơ xã viên & vùng canh tác',
             icon: '👥',
             color: 'bg-emerald-700 text-white',
             border: 'hover:border-emerald-600',
@@ -396,18 +311,10 @@ export const HomePage: React.FC = () => {
                 </div>
                 <h2 className="text-xl font-extrabold leading-tight text-white">{currentUser.name}</h2>
                 <div className="text-agri-100 text-xs font-medium mt-0.5">
-                  {currentUser.team}
+                  {currentHTX.name}
                 </div>
               </div>
             </div>
-
-            <button
-              onClick={handleVoiceWelcome}
-              className="w-12 h-12 rounded-2xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-2xl active:scale-95 transition-all shadow"
-              title="Nghe lời chào và hướng dẫn"
-            >
-              📢
-            </button>
           </div>
 
           {/* Weather Widget */}
@@ -483,26 +390,6 @@ export const HomePage: React.FC = () => {
           </div>
         )}
 
-        {currentRole === 'R05' && (
-          <div className="bg-gradient-to-r from-emerald-700 to-teal-700 text-white rounded-3xl p-4 shadow-md flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">👥</span>
-              <div>
-                <h3 className="text-base font-extrabold leading-snug">Theo dõi sản xuất trong tổ</h3>
-                <p className="text-xs text-emerald-200 font-medium mt-0.5">
-                  Nhắc nhở tổ viên ghi nhật ký & hỗ trợ nhập liệu cho các bác lớn tuổi
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => navigateTo('members_list')}
-              className="bg-white text-emerald-900 hover:bg-emerald-50 active:scale-95 px-3.5 py-2 rounded-2xl font-extrabold text-xs whitespace-nowrap shadow"
-            >
-              Tổ sản xuất ➜
-            </button>
-          </div>
-        )}
-
         {currentRole === 'R02' && (
           <div className="bg-gradient-to-r from-blue-800 to-indigo-900 text-white rounded-3xl p-4 shadow-md flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -510,7 +397,7 @@ export const HomePage: React.FC = () => {
               <div>
                 <h3 className="text-base font-extrabold leading-snug">Bảng điều khiển Ban Quản trị HTX</h3>
                 <p className="text-xs text-indigo-200 font-medium mt-0.5">
-                  Tổng hợp sản lượng mùa vụ, doanh thu toàn HTX và duyệt thành viên mới
+                  Tổng hợp sản lượng mùa vụ, doanh thu toàn HTX và theo dõi thành viên
                 </p>
               </div>
             </div>
@@ -562,7 +449,7 @@ export const HomePage: React.FC = () => {
             <div>
               <div className="text-xs text-slate-500 font-semibold">
                 {currentRole === 'R06'
-                  ? 'Tổ trưởng hỗ trợ kỹ thuật'
+                  ? 'Ban Quản trị HTX hỗ trợ'
                   : currentRole === 'R04'
                   ? 'Kế toán trưởng / Tài chính'
                   : currentRole === 'R03'
@@ -571,7 +458,7 @@ export const HomePage: React.FC = () => {
               </div>
               <div className="text-base font-bold text-slate-800">
                 {currentRole === 'R06'
-                  ? 'Bác Thắng: 0912 888 999'
+                  ? 'Đại diện HTX: 0912 888 999'
                   : currentRole === 'R04'
                   ? 'Chị Dung: 0983 234 567'
                   : currentRole === 'R03'

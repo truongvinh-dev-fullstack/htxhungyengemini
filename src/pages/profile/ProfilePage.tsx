@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 
 export const ProfilePage: React.FC = () => {
-  const { currentUser, currentHTX, logout, navigateTo, speakText, updateProfile } = useApp();
+  const { currentUser, currentHTX, logout, navigateTo, updateProfile } = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [phone, setPhone] = useState(currentUser.phone);
   const [address, setAddress] = useState(currentUser.address);
@@ -12,7 +12,7 @@ export const ProfilePage: React.FC = () => {
     e.preventDefault();
     updateProfile({ phone: phone.trim(), address: address.trim() });
     setIsEditing(false);
-    speakText('Đã cập nhật thông tin cá nhân thành công!');
+
   };
 
   return (
@@ -43,7 +43,7 @@ export const ProfilePage: React.FC = () => {
           <div>
             <h2 className="text-2xl font-extrabold text-slate-900">{currentUser.name}</h2>
             <div className="inline-block bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3 py-1 rounded-full mt-1">
-              {currentUser.team} • {currentUser.role}
+              {currentUser.role} • {currentHTX.shortName || currentHTX.name}
             </div>
             <p className="text-xs text-slate-500 font-semibold mt-1">{currentHTX.name}</p>
           </div>
@@ -118,7 +118,7 @@ export const ProfilePage: React.FC = () => {
           <div>
             <div className="font-extrabold text-sm text-amber-950">Công cụ đổi vai trò & HTX thử nghiệm:</div>
             <p className="text-amber-800 mt-0.5 leading-relaxed">
-              Để chuyển đổi nhanh giữa các vai trò (R02, R03, R04, R05, R06) hoặc chuyển giữa 3 HTX thí điểm, kính mời các đồng chí sử dụng thanh điều hướng màu vàng cố định ở mép trên cùng của ứng dụng.
+              Để chuyển đổi nhanh giữa các vai trò (R02, R03, R04, R06) hoặc chuyển giữa 3 HTX thí điểm, kính mời các đồng chí sử dụng thanh điều hướng màu vàng cố định ở mép trên cùng của ứng dụng.
             </p>
           </div>
         </div>

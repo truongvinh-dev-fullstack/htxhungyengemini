@@ -4,7 +4,7 @@ import { Header } from '../../components/Header';
 import { SalesOrder } from '../../types';
 
 export const SalesDetail: React.FC = () => {
-  const { screenParams, currentHTX, orders, cancelOrder, updateOrderStatus, currentRole, speakText, goBack } = useApp();
+  const { screenParams, currentHTX, orders, cancelOrder, updateOrderStatus, currentRole, goBack } = useApp();
   const initialOrder: SalesOrder = screenParams?.order;
   const order: SalesOrder = orders.find((o) => o.id === initialOrder?.id) || initialOrder;
 
@@ -28,9 +28,9 @@ export const SalesDetail: React.FC = () => {
   const handleUpdateStatus = (newStatus: 'Đang giao' | 'Hoàn thành') => {
     updateOrderStatus(order.id, newStatus);
     if (newStatus === 'Đang giao') {
-      speakText('Đã chuyển đơn hàng sang trạng thái đang giao hàng');
+
     } else if (newStatus === 'Hoàn thành') {
-      speakText('Đã xác nhận hoàn thành đơn hàng và cấp mã hóa đơn điện tử');
+
     }
   };
 
@@ -42,7 +42,7 @@ export const SalesDetail: React.FC = () => {
     }
     cancelOrder(order.id, cancelReason.trim());
     setShowCancelModal(false);
-    speakText('Đã hủy đơn hàng thành công');
+
   };
 
   return (

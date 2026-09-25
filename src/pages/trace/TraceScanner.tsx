@@ -3,13 +3,13 @@ import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 
 export const TraceScanner: React.FC = () => {
-  const { navigateTo, speakText } = useApp();
+  const { navigateTo } = useApp();
   const [isScanning, setIsScanning] = useState(false);
   const [manualCode, setManualCode] = useState('');
 
   const handleScanCode = (sampleCode: string) => {
     setIsScanning(true);
-    speakText('Đang tra cứu dữ liệu nguồn gốc theo mã số tem...');
+
     setTimeout(() => {
       setIsScanning(false);
       navigateTo('trace_result', { code: sampleCode });

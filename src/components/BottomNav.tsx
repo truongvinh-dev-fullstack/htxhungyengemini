@@ -14,8 +14,6 @@ export const BottomNav: React.FC = () => {
         return { icon: '📊', label: 'Báo cáo' };
       case 'R03':
         return { icon: '🌾', label: 'Mùa vụ & Lô' };
-      case 'R05':
-        return { icon: '👥', label: 'Tổ sản xuất' };
       case 'R06':
       default:
         return { icon: '📖', label: 'Sổ nhật ký' };

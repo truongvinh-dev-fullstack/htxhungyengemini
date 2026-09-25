@@ -28,7 +28,7 @@ export const MemberDetail: React.FC = () => {
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
         title="Hồ sơ thành viên"
-        voiceText={`Hồ sơ chi tiết của thành viên ${member.name}, thuộc ${member.team || 'Hợp tác xã'}.`}
+        voiceText={`Hồ sơ chi tiết của thành viên ${member.name}, thuộc ${currentHTX.name}.`}
       />
 
       <div className="p-4 space-y-4">
@@ -42,7 +42,7 @@ export const MemberDetail: React.FC = () => {
           <div>
             <h2 className="text-2xl font-extrabold text-slate-900">{member.name}</h2>
             <div className="inline-block bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3 py-1 rounded-full mt-1">
-              {member.team} • {member.role}
+              {member.role === 'R06' ? 'Xã viên / Hộ thành viên' : 'Ban Quản trị / Điều hành'} • {member.role}
             </div>
             <p className="text-xs text-slate-500 font-semibold mt-1">{currentHTX.name}</p>
           </div>
@@ -77,8 +77,8 @@ export const MemberDetail: React.FC = () => {
               <span className="font-bold text-slate-900 text-right">{member.address}</span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-100">
-              <span className="text-slate-500">Tổ sản xuất:</span>
-              <span className="font-bold text-slate-900">{member.team}</span>
+              <span className="text-slate-500">Hợp tác xã:</span>
+              <span className="font-bold text-slate-900">{currentHTX.name}</span>
             </div>
             <div className="flex justify-between py-1">
               <span className="text-slate-500">Trạng thái:</span>

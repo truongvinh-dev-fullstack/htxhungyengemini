@@ -1,11 +1,11 @@
-import { UserRole, DiaryEntry, HTXId } from '../types';
+import { UserRole, DiaryEntry } from '../types';
 
 /**
  * Kiểm tra quyền hạn truy cập màn hình theo vai trò (SRS Mục 7 - Ma trận phân quyền)
  */
 export const canAccessScreen = (role: UserRole | undefined, screen: string): boolean => {
   // Các màn hình công khai hoặc đăng nhập
-  const publicScreens = ['auth_login', 'auth_register', 'trace_scan', 'trace_result'];
+  const publicScreens = ['auth_login', 'trace_scan', 'trace_result'];
   if (publicScreens.includes(screen)) {
     return true;
   }
@@ -25,36 +25,37 @@ export const canAccessScreen = (role: UserRole | undefined, screen: string): boo
     // Sổ nhật ký đồng ruộng
     case 'diary_list':
     case 'diary_detail':
-      return ['R06', 'R05', 'R03', 'R02'].includes(role);
+      return ['R06', 'R03', 'R02'].includes(role);
     case 'diary_add':
-      // R06 ghi của hộ, R05 ghi hộ/hỗ trợ, R03 hướng dẫn kỹ thuật
-      return ['R06', 'R05', 'R03'].includes(role);
+      // R06 ghi của hộ, R03 hướng dẫn kỹ thuật
+      return ['R06', 'R03'].includes(role);
 
     // Vùng sản xuất / Thửa ruộng
     case 'farm_list':
     case 'farm_detail':
-      return ['R06', 'R05', 'R03', 'R02'].includes(role);
+      return ['R06', 'R03', 'R02'].includes(role);
     case 'farm_add':
-      return ['R06', 'R03'].includes(role);
+      // Chỉ Cán bộ Kỹ thuật R03 được tạo mới vùng sản xuất/thửa ruộng
+      return role === 'R03';
 
     // Thu hoạch
     case 'harvest_list':
     case 'harvest_detail':
-      return ['R06', 'R05', 'R03', 'R02'].includes(role);
+      return ['R06', 'R03', 'R02'].includes(role);
     case 'harvest_add':
       return ['R06', 'R03'].includes(role);
 
     // Sơ chế
     case 'processing_list':
     case 'processing_detail':
-      return ['R03', 'R02', 'R05', 'R06'].includes(role);
+      return ['R03', 'R02', 'R06'].includes(role);
     case 'processing_add':
       return ['R03', 'R02'].includes(role);
 
     // Đóng gói & Mã QR
     case 'packaging_list':
     case 'packaging_qr':
-      return ['R03', 'R02', 'R05', 'R06'].includes(role);
+      return ['R03', 'R02', 'R06'].includes(role);
     case 'packaging_add':
       return ['R03', 'R02'].includes(role);
 
@@ -76,18 +77,13 @@ export const canAccessScreen = (role: UserRole | undefined, screen: string): boo
       // Chỉ Kế toán/Thủ kho R04 được lập phiếu nhập/xuất kho
       return role === 'R04';
 
-    // Quản lý thành viên & Phê duyệt
+    // Quản lý thành viên (chỉ xem danh sách & chi tiết hồ sơ)
     case 'members_list':
     case 'member_detail':
-      return ['R02', 'R05', 'R03', 'R04'].includes(role);
-    case 'member_add':
-      return ['R02', 'R05', 'R03'].includes(role);
-    case 'members_approval':
-      // CN-2.3.5 / CN-3.2.4: R02 duyệt toàn HTX, R05 duyệt trong tổ
-      return ['R02', 'R05'].includes(role);
+      return ['R02', 'R03', 'R04'].includes(role);
 
     default:
-      return true;
+      return false;
   }
 };
 
@@ -111,7 +107,8 @@ export const isDiaryLocked = (entry: DiaryEntry): boolean => {
 export const canModifyDiary = (
   role: UserRole,
   entry: DiaryEntry,
-  currentUserName: string
+  currentUserName: string,
+  currentUserId?: string
 ): { canEdit: boolean; canDelete: boolean; reason?: string } => {
   const locked = isDiaryLocked(entry);
 
@@ -128,14 +125,9 @@ export const canModifyDiary = (
     return { canEdit: true, canDelete: true };
   }
 
-  // R05 (Tổ trưởng) có quyền hỗ trợ ghi/sửa cho tổ viên trong 24h
-  if (role === 'R05') {
-    return { canEdit: true, canDelete: true };
-  }
-
   // R06 chỉ được sửa/xóa nhật ký do chính mình lập
   if (role === 'R06') {
-    if (entry.createdBy === currentUserName) {
+    if (entry.createdById ? entry.createdById === currentUserId : entry.createdBy === currentUserName) {
       return { canEdit: true, canDelete: true };
     }
     return {
@@ -153,20 +145,8 @@ export const canModifyDiary = (
 };
 
 /**
- * Kiểm tra quyền phê duyệt thành viên (R02 duyệt toàn HTX, R05 duyệt trong tổ)
+ * Kiểm tra quyền tạo vùng sản xuất mới (chỉ Cán bộ Kỹ thuật R03)
  */
-export const canApproveMember = (
-  role: UserRole,
-  userTeam?: string,
-  requestTeam?: string
-): boolean => {
-  if (role === 'R02') return true;
-  if (role === 'R05') {
-    // Nếu cả hai đều có thông tin tổ, kiểm tra cùng tổ; nếu không mặc định tổ trưởng duyệt hồ sơ đăng ký tổ mình
-    if (userTeam && requestTeam) {
-      return userTeam.includes(requestTeam) || requestTeam.includes(userTeam);
-    }
-    return true;
-  }
-  return false;
+export const canCreateFarmZone = (role: UserRole | undefined): boolean => {
+  return role === 'R03';
 };

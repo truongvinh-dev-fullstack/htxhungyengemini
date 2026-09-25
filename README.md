@@ -8,7 +8,7 @@ npm install
 npm run start
 # Mở trình duyệt tại: http://localhost:3000/
 ```
-*(Bản demo đã tích hợp đầy đủ Mock Data, Trợ lý giọng nói, Bộ đếm +/-, Quét mã QR, Luồng 4 bước ghi nhật ký, Phê duyệt thành viên và Thanh chuyển đổi nhanh 4 vai trò R06/R05/R04/R02).*
+*(Bản demo đã tích hợp đầy đủ Mock Data, Trợ lý giọng nói, Bộ đếm +/-, Quét mã QR, Luồng 4 bước ghi nhật ký, Danh sách thành viên (chỉ đọc), Vùng sản xuất 1 cấp và Thanh chuyển đổi nhanh 4 vai trò R06/R04/R03/R02).*
 
 ---
 

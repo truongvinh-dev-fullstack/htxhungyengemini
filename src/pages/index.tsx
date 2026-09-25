@@ -2,11 +2,9 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { RoleHTXSwitcher } from '../components/RoleHTXSwitcher';
 import { BottomNav } from '../components/BottomNav';
-import { VoiceModal } from '../components/VoiceModal';
 
 // Screens
 import { Login } from './auth/Login';
-import { Register } from './auth/Register';
 import { HomePage } from './home/HomePage';
 import { DiaryList } from './diary/DiaryList';
 import { DiaryAddWizard } from './diary/DiaryAddWizard';
@@ -29,9 +27,7 @@ import { SalesDetail } from './sales/SalesDetail';
 import { TraceScanner } from './trace/TraceScanner';
 import { TraceResult } from './trace/TraceResult';
 import { MemberList } from './members/MemberList';
-import { MemberApproval } from './members/MemberApproval';
 import { MemberDetail } from './members/MemberDetail';
-import { MemberAdd } from './members/MemberAdd';
 import { InventoryList } from './inventory/InventoryList';
 import { InventoryDetail } from './inventory/InventoryDetail';
 import { InventoryAdd } from './inventory/InventoryAdd';
@@ -73,8 +69,6 @@ export const MainApp: React.FC = () => {
     switch (currentScreen) {
       case 'auth_login':
         return <Login />;
-      case 'auth_register':
-        return <Register />;
       case 'home':
         return <HomePage />;
       case 'diary_list':
@@ -121,10 +115,6 @@ export const MainApp: React.FC = () => {
         return <MemberList />;
       case 'member_detail':
         return <MemberDetail />;
-      case 'member_add':
-        return <MemberAdd />;
-      case 'members_approval':
-        return <MemberApproval />;
       case 'inventory_list':
         return <InventoryList />;
       case 'inventory_detail':
@@ -148,9 +138,7 @@ export const MainApp: React.FC = () => {
     }
   };
 
-  const isAuthScreen =
-    currentScreen === 'auth_login' ||
-    currentScreen === 'auth_register';
+  const isAuthScreen = currentScreen === 'auth_login';
 
   return (
     <div className="mobile-viewport">
@@ -164,9 +152,6 @@ export const MainApp: React.FC = () => {
       {isLoggedIn && !isAuthScreen && currentScreen !== 'trace_scan' && (
         <BottomNav />
       )}
-
-      {/* Voice Assistant Modal */}
-      <VoiceModal />
     </div>
   );
 };
