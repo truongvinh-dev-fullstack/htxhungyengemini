@@ -118,15 +118,6 @@ export const HomePage: React.FC = () => {
             screen: 'harvest_list',
           },
           {
-            id: 'processing',
-            title: 'Quản lý Lô sơ chế',
-            subtitle: 'Làm sạch, phân loại nông sản',
-            icon: '🧪',
-            color: 'bg-cyan-100 text-cyan-800',
-            border: 'hover:border-cyan-600',
-            screen: 'processing_list',
-          },
-          {
             id: 'packaging',
             title: 'Đóng gói & Mã QR',
             subtitle: 'Tạo mã QR truy xuất & in tem',
@@ -382,10 +373,10 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
             <button
-              onClick={() => navigateTo('processing_list')}
+              onClick={() => navigateTo('packaging_list')}
               className="bg-white text-cyan-900 hover:bg-cyan-50 active:scale-95 px-3.5 py-2 rounded-2xl font-extrabold text-xs whitespace-nowrap shadow"
             >
-              Lô sơ chế ➜
+              Đóng gói & Mã QR ➜
             </button>
           </div>
         )}

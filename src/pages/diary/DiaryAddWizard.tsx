@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 import { getCurrentWeatherSuggestion } from '../../services/currentWeather';
 import { diaryWorkTypes } from './workTypes';
+import { matchSeasonForZone } from '../../utils/seasonMatcher';
 
 const localDateTime = (date: Date): string => {
   const offset = date.getTimezoneOffset() * 60000;
@@ -10,7 +11,7 @@ const localDateTime = (date: Date): string => {
 };
 
 export const DiaryAddWizard: React.FC = () => {
-  const { farmZones, inventory, addDiary, navigateTo, currentHTX, currentRole, currentUser } = useApp();
+  const { farmZones, inventory, addDiary, navigateTo, currentHTX, currentRole, currentUser, screenParams } = useApp();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
@@ -27,16 +28,25 @@ export const DiaryAddWizard: React.FC = () => {
 
   // Step 1: Chọn ngày & Vùng sản xuất
   const todayStr = localDateTime(new Date()).slice(0, 10);
+  const targetZoneId: string | undefined = screenParams?.zoneId || screenParams?.zone?.id;
+  const isTargetZoneInvalid = Boolean(targetZoneId && !availableZones.some((z) => z.id === targetZoneId));
+
   const [performedAt, setPerformedAt] = useState<string>(() => localDateTime(new Date()));
   const [selectedZoneId, setSelectedZoneId] = useState<string>(
-    availableZones.length > 0 ? availableZones[0].id : ''
+    (targetZoneId && availableZones.some((z) => z.id === targetZoneId))
+      ? targetZoneId
+      : availableZones.length > 0
+      ? availableZones[0].id
+      : ''
   );
 
   React.useEffect(() => {
-    if (!availableZones.some((z) => z.id === selectedZoneId)) {
+    if (targetZoneId && availableZones.some((z) => z.id === targetZoneId)) {
+      setSelectedZoneId(targetZoneId);
+    } else if (!availableZones.some((z) => z.id === selectedZoneId)) {
       setSelectedZoneId(availableZones[0]?.id || '');
     }
-  }, [availableZones, selectedZoneId]);
+  }, [availableZones, selectedZoneId, targetZoneId]);
 
   // Step 2: Chọn nhiều loại công việc bằng icon lớn & vật tư
   const workTypes = diaryWorkTypes;
@@ -48,6 +58,9 @@ export const DiaryAddWizard: React.FC = () => {
   const diaryMaterials = inventory.filter((item) => item.category !== 'BaoBi');
   const selectedMaterial = diaryMaterials.find((item) => item.id === materialId);
   const selectedZone = availableZones.find((zone) => zone.id === selectedZoneId);
+  const seasonMatch = React.useMemo(() => {
+    return matchSeasonForZone(selectedZone, performedAt);
+  }, [selectedZone, performedAt]);
 
   const toggleWorkType = (id: string) => {
     if (selectedWorkTypes.includes(id)) {
@@ -127,6 +140,14 @@ export const DiaryAddWizard: React.FC = () => {
         alert('Vui lòng chọn ngày và giờ thực hiện hợp lệ.');
         return;
       }
+      if (seasonMatch.status === 'no_season') {
+        alert('Thời điểm này chưa thuộc mùa vụ nào của thửa. Bác vui lòng kiểm tra lại ngày giờ hoặc mùa vụ của thửa.');
+        return;
+      }
+      if (seasonMatch.status === 'overlap') {
+        alert('Dữ liệu mùa vụ của thửa bị chồng thời gian tại thời điểm này. Hệ thống không thể tự chọn mùa vụ.');
+        return;
+      }
 
       setStep(2);
     } else if (step === 2) {
@@ -166,6 +187,10 @@ export const DiaryAddWizard: React.FC = () => {
       alert('Không tìm thấy vùng sản xuất hợp lệ. Không thể lưu nhật ký với mã vùng không xác định.');
       return;
     }
+    if (seasonMatch.status !== 'matched' || !seasonMatch.season) {
+      alert(seasonMatch.message || 'Thời điểm thực hiện không thuộc mùa vụ nào của thửa ruộng.');
+      return;
+    }
     const chosen = workTypes.filter((w) => selectedWorkTypes.includes(w.id));
     const combinedName = chosen.map((w) => w.name).join(' • ');
     const combinedIcon = chosen.map((w) => w.icon).join(' ');
@@ -174,6 +199,8 @@ export const DiaryAddWizard: React.FC = () => {
       htxId: currentHTX.id,
       farmZoneId: zone.id,
       farmZoneName: zone.name,
+      seasonId: seasonMatch.season.seasonId,
+      seasonName: seasonMatch.season.seasonName,
       date: performedAt.slice(0, 10),
       performedAt,
       workType: selectedWorkTypes[0],
@@ -204,6 +231,29 @@ export const DiaryAddWizard: React.FC = () => {
   };
 
   const chosenWorks = workTypes.filter((w) => selectedWorkTypes.includes(w.id));
+
+  if (isTargetZoneInvalid) {
+    return (
+      <div className="p-6 bg-slate-50 min-h-screen flex flex-col items-center justify-center text-center space-y-4">
+        <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center text-4xl shadow-inner border-2 border-red-200">
+          ⚠️
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-xl font-black text-slate-900">Thửa ruộng không hợp lệ</h3>
+          <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
+            Thửa ruộng được chọn không thuộc danh sách vùng sản xuất hộ bác được phép ghi nhật ký hoặc không thuộc HTX hiện tại.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigateTo('farm_list')}
+          className="px-6 py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-sm rounded-2xl shadow-md active:scale-95 transition-all"
+        >
+          Quay lại danh sách thửa ruộng
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
@@ -311,13 +361,74 @@ export const DiaryAddWizard: React.FC = () => {
                   {currentRole === 'R03' && <span className="block text-xs mt-1">Bạn đang ghi hộ cho thành viên này. Nhật ký sẽ ghi rõ người ghi là cán bộ kỹ thuật.</span>}
                 </div>
               )}
+
+              {/* CN-3.1: THẺ THÔNG TIN MÙA VỤ XÁC ĐỊNH THEO THỬA VÀ THỜI ĐIỂM THỰC HIỆN */}
+              {selectedZone && (
+                <div className="mt-3">
+                  {seasonMatch.status === 'matched' && seasonMatch.season && (
+                    <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 space-y-2 text-sm shadow-xs">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-black text-emerald-900 uppercase tracking-wide flex items-center gap-1.5">
+                          <span>🌾</span>
+                          <span>Mùa vụ canh tác xác định:</span>
+                        </span>
+                        <span
+                          className={`text-[11px] font-black px-2.5 py-0.5 rounded-full ${
+                            seasonMatch.season.status === 'Đang canh tác'
+                              ? 'bg-blue-100 text-blue-900 border border-blue-300'
+                              : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                          }`}
+                        >
+                          {seasonMatch.season.status}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="text-lg font-black text-slate-900">
+                          {seasonMatch.season.seasonName}
+                        </div>
+                        <div className="text-xs text-slate-600 font-medium mt-1">
+                          📅 Thời gian vụ: <strong>{seasonMatch.season.seasonStartDate}</strong> {seasonMatch.season.seasonStartTime ? `(${seasonMatch.season.seasonStartTime})` : ''} ➜ <strong>{seasonMatch.season.seasonEndDate}</strong> {seasonMatch.season.seasonEndTime ? `(${seasonMatch.season.seasonEndTime})` : ''}
+                        </div>
+                        <div className="text-xs text-slate-600 font-medium mt-0.5">
+                          🌱 Giống cây/con vụ đó: <strong className="text-slate-900">{seasonMatch.season.variety || selectedZone.variety}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {seasonMatch.status === 'no_season' && (
+                    <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-400 text-sm text-amber-950 space-y-1.5 shadow-sm">
+                      <div className="font-extrabold flex items-center gap-1.5 text-amber-900 text-sm">
+                        <span className="text-lg">⚠️</span>
+                        <span>Thời điểm này chưa thuộc mùa vụ nào của thửa</span>
+                      </div>
+                      <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                        Thời điểm thực hiện ({performedAt.replace('T', ' ')}) không nằm trong bất kỳ khoảng thời gian mùa vụ nào của thửa <strong>{selectedZone.name}</strong>. Bác vui lòng chọn lại ngày/giờ hoặc liên hệ cán bộ kỹ thuật HTX để cập nhật mùa vụ.
+                      </p>
+                    </div>
+                  )}
+
+                  {seasonMatch.status === 'overlap' && (
+                    <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-400 text-sm text-red-950 space-y-1.5 shadow-sm">
+                      <div className="font-extrabold flex items-center gap-1.5 text-red-900 text-sm">
+                        <span className="text-lg">🚫</span>
+                        <span>Dữ liệu mùa vụ bị chồng thời gian</span>
+                      </div>
+                      <p className="text-xs text-red-800 leading-relaxed font-medium">
+                        {seasonMatch.message || 'Có nhiều mùa vụ cùng chứa thời điểm này. Hệ thống không thể tự chọn một vụ.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <button
               onClick={handleNext}
-              disabled={availableZones.length === 0}
+              disabled={availableZones.length === 0 || seasonMatch.status !== 'matched'}
               className={`w-full py-4 rounded-2xl text-xl font-bold flex items-center justify-center gap-2 mt-4 transition-all ${
-                availableZones.length === 0
+                availableZones.length === 0 || seasonMatch.status !== 'matched'
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                   : 'bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white shadow-lg shadow-emerald-700/30'
               }`}
@@ -550,6 +661,17 @@ export const DiaryAddWizard: React.FC = () => {
                 <span className="font-extrabold text-slate-900">
                   {farmZones.find((z) => z.id === selectedZoneId)?.name}
                 </span>
+              <div className="flex justify-between border-b border-emerald-200 pb-1.5">
+                <span className="font-semibold text-slate-600">Mùa vụ áp dụng:</span>
+                <span className="font-extrabold text-emerald-950">
+                  {seasonMatch.season?.seasonName || 'Chưa xác định'}{' '}
+                  {seasonMatch.season?.status && (
+                    <span className="text-xs text-slate-500 font-normal">
+                      ({seasonMatch.season.status})
+                    </span>
+                  )}
+                </span>
+              </div>
               </div>
 
               {/* Multi-work items list */}

@@ -15,20 +15,20 @@ export const PackagingList: React.FC = () => {
       />
 
       <div className="p-4 space-y-4">
-        {/* Chuỗi 3 công đoạn */}
+        {/* Chuỗi 2 công đoạn */}
         <PostHarvestWorkflowTabs activeTab="packaging" />
 
         {/* Action Banner */}
-        <div className="bg-blue-50 border-2 border-blue-300 rounded-3xl p-4 flex items-center justify-between gap-3">
+        <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-extrabold text-blue-950">Đóng gói đợt mới</h3>
-            <p className="text-xs text-blue-800 font-medium mt-0.5">
-              Chọn lô thu hoạch → Tự sinh mã QR
+            <h3 className="text-lg font-extrabold text-emerald-950">Đóng gói đợt mới</h3>
+            <p className="text-xs text-emerald-800 font-medium mt-0.5">
+              Chọn lô thu hoạch → Định lượng thành phẩm → Cấp tem QR
             </p>
           </div>
           <button
             onClick={() => navigateTo('packaging_add')}
-            className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-4 py-3 rounded-2xl font-extrabold text-base flex items-center gap-1.5 shadow-md shadow-blue-600/30 whitespace-nowrap"
+            className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-4 py-3 rounded-2xl font-extrabold text-base flex items-center gap-1.5 shadow-md shadow-emerald-600/30 whitespace-nowrap"
           >
             <span className="text-xl">➕</span>
             <span>Tạo mã mới</span>
@@ -51,40 +51,64 @@ export const PackagingList: React.FC = () => {
               </p>
             </div>
           ) : (
-            packages.map((pkg) => (
-              <div
-                key={pkg.id}
-                onClick={() => navigateTo('packaging_qr', { pkg })}
-                className="bg-white rounded-3xl p-4 border-2 border-slate-200 hover:border-blue-500 active:scale-[0.98] transition-all shadow-sm cursor-pointer space-y-3"
-              >
-                <div className="flex items-start gap-3">
-                  {/* Small QR Thumbnail */}
-                  <img
-                    src={pkg.qrCodeUrl}
-                    alt={pkg.code}
-                    className="w-20 h-20 rounded-2xl border-2 border-slate-200 p-1 bg-white flex-shrink-0 shadow-sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="inline-block bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full mb-1">
-                      {pkg.code}
-                    </span>
-                    <h4 className="text-lg font-extrabold text-slate-900 leading-tight">
-                      {pkg.productName}
-                    </h4>
-                    <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600 font-semibold">
-                      <span>Số lượng: <strong>{pkg.packQuantity} {pkg.unit}</strong></span>
-                      <span>•</span>
-                      <span>{pkg.standard}</span>
+            packages.map((pkg) => {
+              const hasProc = pkg.processingSnapshot?.hasProcessing || !!pkg.processingLotId;
+              return (
+                <div
+                  key={pkg.id}
+                  onClick={() => navigateTo('packaging_qr', { pkg })}
+                  className="bg-white rounded-3xl p-4 border-2 border-slate-200 hover:border-emerald-500 active:scale-[0.98] transition-all shadow-sm cursor-pointer space-y-3"
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Small QR Thumbnail */}
+                    <img
+                      src={pkg.qrCodeUrl}
+                      alt={pkg.code}
+                      className="w-20 h-20 rounded-2xl border-2 border-slate-200 p-1 bg-white flex-shrink-0 shadow-sm"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                        <span className="inline-block bg-blue-100 text-blue-900 text-xs font-bold px-2 py-0.5 rounded-full font-mono">
+                          {pkg.code}
+                        </span>
+                        {pkg.harvestLotCode && (
+                          <span className="inline-block bg-orange-100 text-orange-900 text-[11px] font-bold px-2 py-0.5 rounded-full font-mono">
+                            🌾 {pkg.harvestLotCode}
+                          </span>
+                        )}
+                        {hasProc ? (
+                          <span className="inline-block bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            ✓ Có sơ chế
+                          </span>
+                        ) : (
+                          <span className="inline-block bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                            Không sơ chế
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="text-base font-extrabold text-slate-900 leading-tight">
+                        {pkg.productName}
+                      </h4>
+
+                      <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-600 font-semibold flex-wrap">
+                        <span>Số lượng: <strong>{pkg.packQuantity} {pkg.unit}</strong></span>
+                        {pkg.netWeightPerPack && (
+                          <span>({pkg.netWeightPerPack} {pkg.netWeightUnit || 'kg'}/{pkg.unit})</span>
+                        )}
+                        <span>•</span>
+                        <span className="text-emerald-700 font-bold">{pkg.standard}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500">
-                  <span>Ngày đóng gói: <strong>{pkg.createdDate}</strong></span>
-                  <span className="font-bold text-blue-600">Xem tem QR to ➜</span>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500">
+                    <span>Đóng gói: <strong>{pkg.createdDate}</strong> • Hạn: <strong>{pkg.expiryDate}</strong></span>
+                    <span className="font-bold text-emerald-700">Xem tem QR ➜</span>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

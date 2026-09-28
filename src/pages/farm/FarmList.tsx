@@ -16,13 +16,18 @@ export const FarmList: React.FC = () => {
 
   // Lọc theo mùa vụ và quyền hạn vai trò (SRS Mục 7: R06 chỉ xem vùng của hộ mình)
   const filteredZones = farmZones.filter((zone) => {
-    // 1. R06 bắt buộc chỉ xem vùng sản xuất của hộ mình
+    // 0. Bắt buộc thuộc HTX hiện tại
+    if (zone.htxId !== currentHTX.id) {
+      return false;
+    }
+
+    // 1. R06 bắt buộc chỉ xem vùng sản xuất của hộ mình (chính xác ownerId === currentUser.id, không để lọt bản ghi thiếu ownerId)
     if (currentRole === 'R06') {
-      if (zone.ownerId && zone.ownerId !== currentUser.id) {
+      if (zone.ownerId !== currentUser.id) {
         return false;
       }
     } else if (onlyMyZones) {
-      if (zone.ownerId && zone.ownerId !== currentUser.id) {
+      if (zone.ownerId !== currentUser.id) {
         return false;
       }
     }
@@ -149,7 +154,7 @@ export const FarmList: React.FC = () => {
             filteredZones.map((zone) => (
               <div
                 key={zone.id}
-                onClick={() => navigateTo('farm_detail', { zone })}
+                onClick={() => navigateTo('farm_detail', { zoneId: zone.id, zone })}
                 className="bg-white rounded-3xl overflow-hidden border-2 border-slate-200 hover:border-amber-500 active:scale-[0.98] transition-all shadow-sm cursor-pointer"
               >
                 <div className="relative aspect-[16/9] bg-slate-100">

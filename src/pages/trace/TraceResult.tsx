@@ -10,7 +10,7 @@ interface JourneyStep {
 }
 
 export const TraceResult: React.FC = () => {
-  const { screenParams, navigateTo, packages, harvests, farmZones, diaries, members } = useApp();
+  const { screenParams, navigateTo, packages, harvests, farmZones, diaries, members, processingLots } = useApp();
   const rawCode = (screenParams?.code || '').trim();
 
   // Helper to safely get farmer name
@@ -43,54 +43,147 @@ export const TraceResult: React.FC = () => {
       return null; // INVALID CODE
     }
 
-    if (isGa || (pkg && pkg.htxId === 'dongtao')) {
+    // Nếu tìm thấy gói hàng thực tế trong packages, ưu tiên hiển thị chuỗi dữ liệu thực
+    if (pkg) {
+      const harvest = harvests.find((h) => h.id === pkg.harvestLotId || h.code === pkg.harvestLotCode);
+      const zone = farmZones.find((z) => z.id === harvest?.farmZoneId);
+      const htx = HTX_LIST[pkg.htxId] || HTX_LIST.anninh;
+
+      // Thông tin sơ chế từ snapshot hoặc liên kết
+      const procSnapshot = pkg.processingSnapshot;
+      const procLot = processingLots.find((p) => p.id === pkg.processingLotId || p.harvestLotId === harvest?.id);
+      const hasProc = procSnapshot?.hasProcessing ?? (!!pkg.processingLotId || !!procLot || harvest?.processingStatus === 'da_so_che');
+
+      const procMethod = procSnapshot?.method || procLot?.method || harvest?.processingInfo?.method || 'Xay xát, làm sạch phân loại';
+      const procOut = procSnapshot?.outputQuantity || procLot?.outputQuantity || harvest?.processingInfo?.outputQuantity;
+      const procLoss = procSnapshot?.lossRatePercent || procLot?.lossRatePercent || harvest?.processingInfo?.lossRatePercent;
+
+      const zoneDiaries = zone ? diaries.filter((d) => d.farmZoneId === zone.id) : [];
+
+      const journey: JourneyStep[] = [
+        {
+          time: harvest?.seasonName || zone?.season || 'Vụ Canh tác',
+          title: `1. Vùng canh tác & Mùa vụ: ${zone?.name || 'Vùng sản xuất HTX'}`,
+          desc: `Mã số vùng trồng (MSVT): ${zone?.zoneCode || harvest?.zoneCode || 'MSVT-HTX'}. Hộ sản xuất: ${getFarmerName(zone, harvest?.ownerName || 'Hộ thành viên HTX')}. Giống: ${harvest?.variety || zone?.variety || 'Nông sản an toàn'}.`,
+        },
+      ];
+
+      // Gắn thêm 2 nhật ký thực tế nếu có
+      if (zoneDiaries.length > 0) {
+        zoneDiaries.slice(0, 2).forEach((d) => {
+          journey.push({
+            time: d.date,
+            title: `Canh tác: ${d.workTypeName}`,
+            desc: `${d.suppliesUsed ? `Vật tư: ${d.suppliesUsed}. ` : ''}${d.notes || 'Thực hiện chuẩn VietGAP.'}`,
+          });
+        });
+      }
+
+      // Bước thu hoạch
+      journey.push({
+        time: harvest?.date || 'Thu hoạch',
+        title: `2. Thu hoạch - Lô: ${harvest?.code || pkg.harvestLotCode || 'TH-HTX'}`,
+        desc: `Sản lượng đạt ${harvest?.yieldQuantity?.toLocaleString() || ''} ${harvest?.unit || 'kg'}${
+          harvest?.grade1Quantity !== undefined
+            ? ` (Loại 1: ${harvest.grade1Quantity.toLocaleString()} ${harvest.unit}, Loại 2: ${harvest.grade2Quantity?.toLocaleString() || 0} ${harvest.unit})`
+            : ''
+        }.${harvest?.qualityMetric ? ` Chỉ số chất lượng: ${harvest.qualityMetric}.` : ''}`,
+      });
+
+      // Bước sơ chế (hoặc không sơ chế)
+      if (hasProc) {
+        journey.push({
+          time: procSnapshot?.date || procLot?.date || harvest?.processingInfo?.date || harvest?.date || 'Sơ chế',
+          title: `3. Sơ chế: ${procMethod}`,
+          desc: `Ra thành phẩm: ${procOut?.toLocaleString() || ''} ${harvest?.unit || 'kg'}${procLoss !== undefined ? ` (Hao hụt sơ chế: ${procLoss}%)` : ''}. Đảm bảo vệ sinh an toàn thực phẩm.`,
+        });
+      } else {
+        journey.push({
+          time: harvest?.date || 'Không sơ chế',
+          title: `3. Không qua sơ chế nhiệt (Đóng gói trực tiếp)`,
+          desc: `Nông sản tươi thu hoạch đạt tiêu chuẩn chất lượng cao được chuyển thẳng sang đóng gói bao bì chuyên dụng.`,
+        });
+      }
+
+      // Bước đóng gói
+      journey.push({
+        time: pkg.createdDate,
+        title: `4. Đóng gói dán tem QR: ${pkg.productName}`,
+        desc: `Quy cách: ${pkg.packagingSpec || `${pkg.packQuantity} ${pkg.unit}`}. Tiêu chuẩn: ${pkg.standard}. Hạn sử dụng: ${pkg.expiryDate}. Mã tem QR: ${pkg.code}.`,
+      });
+
+      return {
+        code: pkg.code,
+        name: pkg.productName,
+        htx: htx.name,
+        location: htx.address,
+        farmer: `${getFarmerName(zone, harvest?.ownerName || 'Hộ thành viên')} (Hộ thành viên HTX)`,
+        zone: `${zone?.name || harvest?.farmZoneName || 'Vùng trồng'} ${zone?.zoneCode ? `(${zone.zoneCode})` : ''}`,
+        season: harvest?.seasonName || zone?.season || 'Vụ Canh tác',
+        lotCode: pkg.harvestLotCode || harvest?.code || 'TH-HTX-2026',
+        processingSummary: hasProc ? `${procMethod} (Hao hụt: ${procLoss || 0}%)` : 'Không sơ chế (Đóng gói trực tiếp)',
+        standard: pkg.standard,
+        photo: harvest?.photoUrl || 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?w=600&auto=format&fit=crop&q=80',
+        harvestDate: harvest?.date || 'Đang cập nhật',
+        packDate: pkg.createdDate,
+        expiryDate: pkg.expiryDate,
+        journey,
+      };
+    }
+
+    if (isGa) {
       const harvest = harvests.find((h) => h.htxId === 'dongtao');
       const zone = farmZones.find((z) => z.id === harvest?.farmZoneId || z.id === 'fz-03');
       const htx = HTX_LIST.dongtao;
       return {
         code: rawCode || 'TXNG-HY-DT-GA-012',
-        name: pkg?.productName || 'Gà đặc sản Đông Tảo thuần chủng chân to tiến vua',
+        name: 'Gà đặc sản Đông Tảo thuần chủng chân to tiến vua',
         htx: htx.name,
         location: htx.address,
         farmer: `${getFarmerName(zone, 'Bác Trần Đình Trọng')} (Hộ thành viên HTX)`,
         zone: zone?.name || 'Khu chuồng nuôi thả vườn Vườn Nhãn (Đàn 450 con)',
+        season: harvest?.seasonName || 'Lứa gà thịt Tết 2026',
         lotCode: harvest?.code || 'TH-DT-2026-001',
+        processingSummary: 'Kiểm dịch thú y & Làm sạch hút chân không',
         standard: 'OCOP 4 sao • Chuỗi nông sản an toàn Hưng Yên',
         photo: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=600&auto=format&fit=crop&q=80',
         harvestDate: harvest?.date || '10/09/2026',
-        packDate: pkg?.createdDate || '12/09/2026',
-        expiryDate: pkg?.expiryDate || '12/10/2026',
+        packDate: '12/09/2026',
+        expiryDate: '12/10/2026',
         journey: [
-          { time: '02/2026', title: 'Chọn con giống', desc: 'Gà Đông Tảo thuần chủng đời F1 chân vảy rồng khỏe mạnh.' },
+          { time: '02/2026', title: '1. Vùng nuôi & Con giống', desc: 'Gà Đông Tảo thuần chủng đời F1 chân vảy rồng tại Khu chuồng Vườn Nhãn.' },
           { time: '05/2026', title: 'Chăm sóc sinh học', desc: 'Thức ăn ngô mảnh ủ men vi sinh, uống nước thảo dược tự nhiên.' },
-          { time: '08/2026', title: 'Kiểm dịch thú y', desc: 'Đạt xét nghiệm mẫu không tồn dư kháng sinh độc hại.' },
-          { time: '09/2026', title: 'Xuất chuồng & Đóng gói', desc: 'Sơ chế hút chân không, dán tem QR truy xuất điện tử HTX.' },
+          { time: '10/09/2026', title: '2. Xuất chuồng', desc: 'Xuất chuồng đàn 50 con tuyển chọn, trọng lượng TB 4.2 kg/con.' },
+          { time: '11/09/2026', title: '3. Sơ chế kiểm dịch', desc: 'Giết mổ kiểm dịch thú y & làm sạch hút chân không đạt 46 con thành phẩm.' },
+          { time: '12/09/2026', title: '4. Đóng gói dán tem QR', desc: 'Đóng gói hút chân không, dán tem QR truy xuất điện tử HTX Đông Tảo.' },
         ] as JourneyStep[],
       };
     }
 
-    if (isNhan || (pkg && pkg.htxId === 'quyetthang')) {
+    if (isNhan) {
       const harvest = harvests.find((h) => h.htxId === 'quyetthang');
       const zone = farmZones.find((z) => z.id === harvest?.farmZoneId || z.id === 'fz-04');
       const htx = HTX_LIST.quyetthang;
       return {
         code: rawCode || 'TXNG-HY-QT-NHAN-005',
-        name: pkg?.productName || 'Nhãn lồng tiến vua Hương Chi Hưng Yên (Hộp 1kg)',
+        name: 'Nhãn lồng tiến vua Hương Chi Hưng Yên (Hộp 1kg)',
         htx: htx.name,
         location: htx.address,
         farmer: `${getFarmerName(zone, 'Bác Phạm Thị Mai')} (Hộ thành viên tiêu biểu)`,
         zone: zone?.name || 'Vườn Nhãn Hương Chi - Khu A (1,2 hecta)',
+        season: harvest?.seasonName || 'Vụ Nhãn 2026',
         lotCode: harvest?.code || 'TH-QT-2026-001',
+        processingSummary: 'Sấy dẻo nhiệt độ thấp (Long nhãn tiến vua)',
         standard: 'VietGAP • Chỉ dẫn địa lý Nhãn lồng Hưng Yên',
         photo: 'https://images.unsplash.com/photo-1618897996318-5a901fa6ca71?w=600&auto=format&fit=crop&q=80',
         harvestDate: harvest?.date || '07/09/2026',
-        packDate: pkg?.createdDate || '10/09/2026',
-        expiryDate: pkg?.expiryDate || '20/09/2026',
+        packDate: '10/09/2026',
+        expiryDate: '20/09/2026',
         journey: [
-          { time: '01/2026', title: 'Tỉa cành & bón lót', desc: 'Bón phân hữu cơ vi sinh, tưới nước tự động.' },
-          { time: '04/2026', title: 'Đậu quả & bao chùm', desc: 'Bao chùm quả bảo vệ sinh học, không dùng hóa chất cấm.' },
-          { time: '09/2026', title: 'Thu hái chọn lọc', desc: 'Hái tay từng chùm quả to đều, cùi dày ráo nước, độ ngọt cao.' },
-          { time: '09/2026', title: 'Đóng hộp dán tem', desc: 'Đóng hộp có tem QR chống hàng giả của HTX Quyết Thắng.' },
+          { time: '01/2026', title: '1. Vùng trồng & Mùa vụ', desc: 'Vườn Nhãn Hương Chi Khu A đạt chứng nhận VietGAP.' },
+          { time: '07/09/2026', title: '2. Thu hoạch chọn lọc', desc: 'Hái tay từng chùm quả to đều, cùi dày ráo nước, độ ngọt 19° Brix.' },
+          { time: '08/09/2026', title: '3. Sơ chế sấy dẻo', desc: 'Sấy dẻo nhiệt độ thấp tách vỏ hạt, giữ nguyên hương vị tự nhiên.' },
+          { time: '10/09/2026', title: '4. Đóng hộp dán tem QR', desc: 'Đóng hộp cao cấp 1kg có tem QR chống hàng giả của HTX Quyết Thắng.' },
         ] as JourneyStep[],
       };
     }
@@ -106,18 +199,19 @@ export const TraceResult: React.FC = () => {
         location: htx.address,
         farmer: `${getFarmerName(zone, 'Bác Nguyễn Văn An')} (Hộ thành viên HTX)`,
         zone: zone?.name || 'Thửa Cánh Đồng Chợ (4.200 m²)',
+        season: harvest?.seasonName || 'Vụ Xuân 2026',
         lotCode: harvest?.code || 'TH-AN-2026-002',
+        processingSummary: 'Xay xát gạo lứt hữu cơ (giữ cám)',
         standard: 'Hữu cơ sinh học • Chuẩn OCOP 4 sao',
         photo: 'https://images.unsplash.com/photo-1530595467537-0b5996c41f2d?w=600&auto=format&fit=crop&q=80',
-        harvestDate: harvest?.date || '10/09/2026',
+        harvestDate: harvest?.date || '28/05/2026',
         packDate: '14/09/2026',
         expiryDate: '14/03/2027',
         journey: [
-          { time: '06/2026', title: 'Gieo cấy lúa ST25', desc: 'Mầm giống ST25 thuần chuẩn, gieo mạ khay cấy máy thẳng hàng.' },
-          { time: '07/2026', title: 'Bón lót vi sinh', desc: 'Bón phân hữu cơ vi sinh, không phun thuốc diệt cỏ.' },
-          { time: '08/2026', title: 'Chăm sóc trổ bông', desc: 'Quản lý nước sạch liên tục, giám sát rầy nâu bằng bẫy đèn.' },
-          { time: '09/2026', title: 'Thu hoạch máy gặt', desc: 'Gặt đập liên hợp sấy đạt độ ẩm 14% bảo quản.' },
-          { time: '09/2026', title: 'Xay xát & Đóng gói', desc: 'Xát gạo giữ cám giàu dinh dưỡng, đóng túi 5kg dán tem QR.' },
+          { time: '06/2026', title: '1. Vùng trồng & Mùa vụ', desc: 'Gieo mạ cấy lúa ST25 hữu cơ tại Thửa Cánh Đồng Chợ (MSVT-AN-02).' },
+          { time: '28/05/2026', title: '2. Thu hoạch máy gặt', desc: 'Gặt đập liên hợp sấy đạt độ ẩm 14.2%, sản lượng 1.800 kg.' },
+          { time: '12/09/2026', title: '3. Xay xát & Giữ cám', desc: 'Xay xát giữ lớp màng cám dinh dưỡng, tỷ lệ thu hồi 75%.' },
+          { time: '14/09/2026', title: '4. Đóng gói dán tem QR', desc: 'Đóng túi 5kg dán tem QR truy xuất điện tử chuẩn VietGAP.' },
         ] as JourneyStep[],
       };
     }
@@ -127,38 +221,29 @@ export const TraceResult: React.FC = () => {
     const zone = farmZones.find((z) => z.id === 'fz-01');
     const htx = HTX_LIST.anninh;
 
-    // Check if there are real diary entries
-    const zoneDiaries = diaries.filter((d) => d.farmZoneId === 'fz-01');
-    const dynamicJourney: JourneyStep[] = zoneDiaries.length > 0
-      ? zoneDiaries.slice(0, 4).map((d) => ({
-          time: d.date,
-          title: d.workTypeName,
-          desc: `${d.suppliesUsed ? `Vật tư: ${d.suppliesUsed}. ` : ''}${d.notes || ''}`.trim(),
-        }))
-      : [
-          { time: '06/2026', title: 'Gieo mạ cấy lúa', desc: 'Giống lúa Bắc Thơm số 7 nguyên chủng, cấy thưa dặm dày hợp lý.' },
-          { time: '07/2026', title: 'Bón phân hữu cơ', desc: 'Bón phân hữu cơ khoáng vi sinh Quế Lâm, điều tiết nước mương sạch.' },
-          { time: '08/2026', title: 'Chăm sóc đòng', desc: 'Kiểm soát sâu bệnh sinh học, đạt tiêu chuẩn VietGAP.' },
-          { time: '09/2026', title: 'Thu hoạch máy gặt', desc: 'Thu hoạch bằng máy liên hợp HTX, sấy khô đạt độ ẩm 14%.' },
-        ];
-
     return {
       code: rawCode || 'TXNG-HY-AN-BT7-089',
-      name: pkg?.productName || 'Gạo sạch Bắc Thơm số 7 Hưng Yên (Túi 5kg)',
+      name: 'Gạo sạch Bắc Thơm số 7 Hưng Yên (Túi 5kg)',
       htx: htx.name,
       location: htx.address,
       farmer: `${getFarmerName(zone, 'Bác Nguyễn Văn An')} (Hộ thành viên HTX)`,
       zone: zone?.name || 'Thửa Đầm Bông - Cánh đồng Lớn (3.500 m²)',
+      season: harvest?.seasonName || 'Vụ Xuân 2026',
       lotCode: harvest?.code || 'TH-AN-2026-001',
+      processingSummary: 'Xay xát bóc vỏ trấu & sàng lọc đánh bóng',
       standard: 'VietGAP • OCOP 4 sao • Không hóa chất cấm',
       photo: 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?w=600&auto=format&fit=crop&q=80',
-      harvestDate: harvest?.date || '15/09/2026',
-      packDate: pkg?.createdDate || '17/09/2026',
-      expiryDate: pkg?.expiryDate || '17/03/2027',
-      journey: dynamicJourney,
+      harvestDate: harvest?.date || '15/05/2026',
+      packDate: '17/09/2026',
+      expiryDate: '17/03/2027',
+      journey: [
+        { time: '01/2026', title: '1. Vùng canh tác & Mùa vụ', desc: 'Thửa Đầm Bông (MSVT-AN-01), Vụ Xuân 2026, giống Bắc Thơm 7.' },
+        { time: '15/05/2026', title: '2. Thu hoạch máy gặt', desc: 'Thu hoạch 1.200 kg lúa tươi chất lượng Loại 1: 1.000 kg, Loại 2: 200 kg.' },
+        { time: '16/09/2026', title: '3. Xay xát sơ chế', desc: 'Tách trấu bóc vỏ đạt 816 kg gạo thành phẩm (hao hụt 32%).' },
+        { time: '17/09/2026', title: '4. Đóng gói dán tem QR', desc: 'Đóng túi 5kg dán tem QR truy xuất điện tử HTX An Ninh.' },
+      ] as JourneyStep[],
     };
-  }, [rawCode, packages, harvests, farmZones, diaries, members]);
-
+  }, [rawCode, packages, harvests, farmZones, diaries, members, processingLots]);
 
   // CASE 1: INVALID / UNVERIFIED QR CODE
   if (!matchResult) {
@@ -270,12 +355,14 @@ export const TraceResult: React.FC = () => {
               {matchResult.name}
             </h2>
 
-            <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-1 text-sm text-emerald-950">
+            <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 space-y-1.5 text-sm text-emerald-950">
               <div>• <strong>Hợp tác xã:</strong> {matchResult.htx}</div>
               <div>• <strong>Địa chỉ:</strong> {matchResult.location}</div>
               <div>• <strong>Hộ sản xuất:</strong> {matchResult.farmer}</div>
-              <div>• <strong>Vùng nuôi trồng:</strong> {matchResult.zone}</div>
+              <div>• <strong>Vùng canh tác:</strong> {matchResult.zone}</div>
+              <div>• <strong>Mùa vụ:</strong> <span className="font-bold text-emerald-800">{matchResult.season}</span></div>
               <div>• <strong>Mã lô thu hoạch:</strong> <span className="font-mono font-bold">{matchResult.lotCode}</span></div>
+              <div>• <strong>Công đoạn sơ chế:</strong> <span className="font-semibold text-blue-900">{matchResult.processingSummary}</span></div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
@@ -291,10 +378,10 @@ export const TraceResult: React.FC = () => {
           </div>
         </div>
 
-        {/* Production Timeline Journey */}
+        {/* Production Timeline Journey (Req 9) */}
         <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-4">
           <h3 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-            <span>🌱</span> Hành trình từ đồng ruộng đến bàn ăn
+            <span>🌱</span> Hành trình Vùng → Mùa vụ → Thu hoạch → Sơ chế → Đóng gói
           </h3>
 
           <div className="relative pl-6 space-y-5 border-l-4 border-emerald-500 ml-3 py-1">
@@ -338,7 +425,6 @@ export const TraceResult: React.FC = () => {
                 navigator.clipboard?.writeText?.(window.location.href);
                 alert('Đã sao chép liên kết truy xuất nguồn gốc. Bác có thể dán gửi qua tin nhắn Zalo!');
               }
-
             }}
             className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-extrabold text-base shadow flex items-center justify-center gap-2"
           >

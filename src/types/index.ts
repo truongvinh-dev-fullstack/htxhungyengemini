@@ -34,16 +34,35 @@ export interface UserProfile {
 }
 
 export interface SeasonHistoryItem {
+  seasonId: string; // Định danh riêng ổn định cho mùa vụ
   seasonName: string;
   year: number;
-  yieldResult: string;
-  status: 'Đang canh tác' | 'Đã thu hoạch' | 'Nghỉ vụ';
+  yieldResult?: string;
+  status: 'Đang canh tác' | 'Đã thu hoạch' | 'Nghỉ vụ' | 'Đã kết thúc';
   quality?: string;
   harvestDate?: string;
+  // Snapshot dữ liệu lịch sử của thửa tại thời điểm vụ đó
+  variety?: string;
+  areaValue?: number;
+  areaUnit?: string;
+  areaOrQuantity?: string;
+  ownerId?: string;
+  ownerName?: string;
+  seasonStartDate?: string;
+  seasonEndDate?: string;
+  seasonStartTime?: string;
+  seasonEndTime?: string;
+  seasonStage?: string;
+  expectedYieldValue?: number;
+  expectedYieldUnit?: string;
+  expectedHarvestDate?: string;
+  forecastYield?: string;
+  notes?: string;
 }
 
 export interface FarmZone {
   id: string; // ID kỹ thuật nội bộ duy nhất (fz-01, fz-02...)
+  currentSeasonId?: string; // Định danh mùa vụ hiện hành
   zoneCode: string; // Mã số vùng trồng / cơ sở sản xuất (MSVT, VD: MSVT-AN-01)
   htxId: HTXId;
   ownerId: string; // ID hộ nông dân phụ trách
@@ -75,6 +94,8 @@ export interface DiaryEntry {
   htxId: HTXId;
   farmZoneId: string;
   farmZoneName: string;
+  seasonId?: string; // Gắn với mùa vụ canh tác
+  seasonName?: string;
   date: string;
   performedAt?: string; // Giờ thực hiện tại địa phương, dạng YYYY-MM-DDTHH:mm
   workType: string;
@@ -99,17 +120,43 @@ export interface DiaryEntry {
   createdById?: string;
 }
 
+export interface ProcessingInfo {
+  date: string; // Ngày sơ chế
+  method: string; // Phương pháp/nội dung sơ chế
+  inputQuantity: number; // Khối lượng đưa vào
+  outputQuantity: number; // Khối lượng sau sơ chế
+  unit: string; // Đơn vị: kg, con...
+  lossQuantity: number; // Hao hụt = input - output
+  lossRatePercent: number; // Tỷ lệ hao hụt (%)
+  recoveryRatePercent: number; // Tỷ lệ thu hồi (%)
+  notes?: string;
+  operatorName?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
 export interface HarvestLot {
   id: string;
-  code: string; // LH-2026-001
+  code: string; // TH-AN-2026-001
   htxId: HTXId;
   farmZoneId: string;
   farmZoneName: string;
+  zoneCode?: string; // MSVT mã số vùng trồng
+  variety?: string; // Giống cây/sản phẩm
+  ownerId?: string;
+  ownerName?: string;
+  seasonId?: string; // Gắn với mùa vụ cụ thể
+  seasonName?: string;
   date: string;
-  yieldQuantity: number;
+  yieldQuantity: number; // Tổng sản lượng
+  grade1Quantity?: number; // Khối lượng Loại 1
+  grade2Quantity?: number; // Khối lượng Loại 2
+  qualityMetric?: string; // Chỉ số chất lượng thực tế
   unit: string; // kg, tấn, con
   photoUrl: string;
   notes: string;
+  processingStatus?: 'chua_so_che' | 'khong_so_che' | 'da_so_che';
+  processingInfo?: ProcessingInfo;
 }
 
 export interface ProcessingLot {
@@ -132,20 +179,49 @@ export interface ProcessingLot {
   status: 'Đã sơ chế' | 'Đã đóng gói';
 }
 
+export interface PackagingProcessingSnapshot {
+  hasProcessing: boolean;
+  statusText: 'Đã sơ chế' | 'Không sơ chế' | 'Chưa sơ chế';
+  date?: string;
+  method?: string;
+  inputQuantity?: number;
+  outputQuantity?: number;
+  unit?: string;
+  lossQuantity?: number;
+  lossRatePercent?: number;
+  recoveryRatePercent?: number;
+  notes?: string;
+  operatorName?: string;
+}
+
 export interface PackagedProduct {
   id: string;
   code: string; // SP-2026-089
   htxId: HTXId;
   harvestLotId: string;
+  harvestLotCode?: string; // Mã lô thu hoạch gắn tem (chỉ đọc)
   processingLotId?: string;
   processingLotCode?: string;
-  productName: string; // Gạo Bắc Thơm An Ninh túi 5kg
+  productName: string; // Tên sản phẩm in trên nhãn
+  packagingSpec?: string; // Quy cách bao bì
+  netWeightPerPack?: number; // Khối lượng thực của mỗi gói (VD: 5, 2, 1...)
+  netWeightUnit?: string; // Đơn vị khối lượng thực (kg, con...)
   packQuantity: number;
-  unit: string; // Gói, Hộp, Túi, Con
+  unit: string; // Gói, Hộp, Túi, Con, Thùng...
   qrCodeUrl: string;
   createdDate: string;
   expiryDate: string;
   standard: string; // VietGAP, OCOP 4 sao
+  processingSnapshot?: PackagingProcessingSnapshot;
+  harvestSnapshot?: {
+    harvestDate?: string;
+    farmZoneName?: string;
+    zoneCode?: string;
+    variety?: string;
+    ownerName?: string;
+    yieldQuantity?: number;
+    unit?: string;
+  };
 }
 
 export interface InventoryItem {

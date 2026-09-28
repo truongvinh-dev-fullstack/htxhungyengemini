@@ -33,6 +33,7 @@ export const canAccessScreen = (role: UserRole | undefined, screen: string): boo
     // Vùng sản xuất / Thửa ruộng
     case 'farm_list':
     case 'farm_detail':
+    case 'farm_season_detail':
       return ['R06', 'R03', 'R02'].includes(role);
     case 'farm_add':
       // Chỉ Cán bộ Kỹ thuật R03 được tạo mới vùng sản xuất/thửa ruộng
@@ -149,4 +150,36 @@ export const canModifyDiary = (
  */
 export const canCreateFarmZone = (role: UserRole | undefined): boolean => {
   return role === 'R03';
+};
+
+/**
+ * Kiểm tra quyền ghi nhận/chỉnh sửa sơ chế (R03 Cán bộ kỹ thuật hoặc R02 Ban quản trị HTX)
+ * Hộ nông dân R06 không có quyền này
+ */
+export const canManageProcessing = (role: UserRole | undefined): boolean => {
+  return role === 'R03' || role === 'R02';
+};
+
+/**
+ * Kiểm tra quyền đóng gói và cấp tem mã QR (R03 hoặc R02)
+ * Hộ nông dân R06 không có quyền này
+ */
+export const canManagePackaging = (role: UserRole | undefined): boolean => {
+  return role === 'R03' || role === 'R02';
+};
+
+/**
+ * Kiểm tra quyền tạo lô thu hoạch:
+ * R03, R02 được tạo cho mọi thửa trong HTX; R06 chỉ được tạo cho thửa mình phụ trách
+ */
+export const canCreateHarvest = (
+  role: UserRole | undefined,
+  zoneOwnerId?: string,
+  currentUserId?: string
+): boolean => {
+  if (role === 'R03' || role === 'R02') return true;
+  if (role === 'R06') {
+    return !!zoneOwnerId && !!currentUserId && zoneOwnerId === currentUserId;
+  }
+  return false;
 };

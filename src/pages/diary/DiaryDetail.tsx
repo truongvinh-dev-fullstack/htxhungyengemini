@@ -4,6 +4,7 @@ import { Header } from '../../components/Header';
 import { DiaryEntry } from '../../types';
 import { isDiaryLocked, canModifyDiary } from '../../utils/permissions';
 import { diaryWorkTypes } from './workTypes';
+import { matchSeasonForZone } from '../../utils/seasonMatcher';
 
 export const DiaryDetail: React.FC = () => {
   const { screenParams, deleteDiary, updateDiary, goBack, diaries, farmZones, inventory, currentUser, currentRole } = useApp();
@@ -31,6 +32,12 @@ export const DiaryDetail: React.FC = () => {
   const [editMaterialQuantity, setEditMaterialQuantity] = useState(entry?.materialQuantity?.toString() || '');
   const diaryMaterials = inventory.filter((item) => item.category !== 'BaoBi');
   const editMaterial = diaryMaterials.find((item) => item.id === editMaterialId);
+  const targetZone = farmZones.find((z) => z.id === entry?.farmZoneId);
+  const editSeasonMatch = React.useMemo(() => {
+    if (!targetZone) return { status: 'no_season' as const, message: 'Không tìm thấy thửa' };
+    const time = entry?.performedAt ? editPerformedAt : editDate;
+    return matchSeasonForZone(targetZone, time);
+  }, [targetZone, entry?.performedAt, editPerformedAt, editDate]);
 
   if (!entry) {
     return (
@@ -77,6 +84,10 @@ export const DiaryDetail: React.FC = () => {
       alert('PHI phải là số ngày không âm.');
       return;
     }
+    if (editSeasonMatch.status !== 'matched' || !editSeasonMatch.season) {
+      alert(editSeasonMatch.message || 'Thời điểm thực hiện không thuộc mùa vụ nào của thửa.');
+      return;
+    }
     const selectedWorks = diaryWorkTypes.filter((work) => editWorkTypes.includes(work.id));
     const res = updateDiary(entry.id, {
       workTypeName: entry.workTypes ? selectedWorks.map((work) => work.name).join(' • ') : editWorkName.trim() || entry.workTypeName,
@@ -85,6 +96,8 @@ export const DiaryDetail: React.FC = () => {
       workTypeIcon: entry.workTypes ? selectedWorks.map((work) => work.icon).join(' ') : entry.workTypeIcon,
       date: entry.performedAt ? editPerformedAt.slice(0, 10) : editDate,
       performedAt: entry.performedAt ? editPerformedAt : undefined,
+      seasonId: editSeasonMatch.season.seasonId,
+      seasonName: editSeasonMatch.season.seasonName,
       photoUrl: editPhoto,
       workDescription: editDescription.trim() || undefined,
       materialId: editMaterial?.id,
@@ -187,6 +200,22 @@ export const DiaryDetail: React.FC = () => {
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Ngày{entry.performedAt ? ' và giờ' : ''} thực hiện</label>
               {entry.performedAt ? <input type="datetime-local" value={editPerformedAt} onChange={(e) => setEditPerformedAt(e.target.value)} required className="w-full p-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl" /> : <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} required className="w-full p-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl" />}
+              {editSeasonMatch.status === 'matched' && editSeasonMatch.season && (
+                <div className="mt-2 p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-950 flex items-center justify-between">
+                  <span>Mùa vụ áp dụng: <strong>{editSeasonMatch.season.seasonName}</strong> ({editSeasonMatch.season.status})</span>
+                  <span className="text-[10px] text-slate-500 font-medium">{editSeasonMatch.season.seasonStartDate} ➜ {editSeasonMatch.season.seasonEndDate}</span>
+                </div>
+              )}
+              {editSeasonMatch.status === 'no_season' && (
+                <div className="mt-2 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 font-medium">
+                  ⚠️ Thời điểm này chưa thuộc mùa vụ nào của thửa.
+                </div>
+              )}
+              {editSeasonMatch.status === 'overlap' && (
+                <div className="mt-2 p-2.5 bg-red-50 border border-red-300 rounded-xl text-xs text-red-900 font-medium">
+                  🚫 Dữ liệu mùa vụ bị chồng thời gian tại thời điểm này.
+                </div>
+              )}
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Ảnh hiện trường</label>
@@ -274,6 +303,12 @@ export const DiaryDetail: React.FC = () => {
                 <h3 className="text-2xl font-extrabold text-slate-900 mt-0.5">
                   {entry.farmZoneName}
                 </h3>
+                {entry.seasonName && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-black">
+                    <span>🌾</span>
+                    <span>Mùa vụ: {entry.seasonName}</span>
+                  </div>
+                )}
                 <p className="text-sm text-slate-600 mt-1">Hộ phụ trách: <strong>{entry.subjectOwnerName || farmZones.find((zone) => zone.id === entry.farmZoneId)?.ownerName || 'Chưa rõ'}</strong></p>
                 {entry.subjectOwnerName && entry.createdBy !== entry.subjectOwnerName && <p className="text-xs text-emerald-800 font-semibold mt-1">Nhật ký do cán bộ ghi hộ</p>}
               </div>

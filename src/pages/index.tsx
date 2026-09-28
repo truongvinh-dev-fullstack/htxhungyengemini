@@ -12,6 +12,7 @@ import { DiaryDetail } from './diary/DiaryDetail';
 import { FarmList } from './farm/FarmList';
 import { FarmAdd } from './farm/FarmAdd';
 import { FarmDetail } from './farm/FarmDetail';
+import { FarmSeasonDetail } from './farm/FarmSeasonDetail';
 import { HarvestList } from './harvest/HarvestList';
 import { HarvestAdd } from './harvest/HarvestAdd';
 import { HarvestDetail } from './harvest/HarvestDetail';
@@ -83,6 +84,8 @@ export const MainApp: React.FC = () => {
         return <FarmAdd />;
       case 'farm_detail':
         return <FarmDetail />;
+      case 'farm_season_detail':
+        return <FarmSeasonDetail />;
       case 'harvest_list':
         return <HarvestList />;
       case 'harvest_add':

@@ -8,6 +8,8 @@ import {
   DiaryEntry,
   HarvestLot,
   ProcessingLot,
+  ProcessingInfo,
+  PackagingProcessingSnapshot,
   PackagedProduct,
   InventoryItem,
   StockTransaction,
@@ -31,7 +33,8 @@ import {
   INITIAL_NOTIFICATIONS,
 } from '../mock/data';
 import { API_CONFIG } from '../config/api';
-import { isDiaryLocked, canModifyDiary } from '../utils/permissions';
+import { isDiaryLocked, canModifyDiary, canManageProcessing, canManagePackaging, canCreateHarvest } from '../utils/permissions';
+import { matchSeasonForZone } from '../utils/seasonMatcher';
 import {
   authService,
   diaryService,
@@ -85,7 +88,7 @@ interface AppContextType {
 
   updateProfile: (updatedData: Partial<UserProfile>) => void;
   addFarmZone: (zone: Omit<FarmZone, 'id' | 'farmingDays'>) => { success: boolean; message?: string; zone?: FarmZone };
-  updateFarmZone: (zoneId: string, updatedData: Partial<FarmZone>) => void;
+  updateFarmZone: (zoneId: string, updatedData: Partial<FarmZone>) => { success: boolean; message?: string };
   deleteFarmZone: (zoneId: string) => { success: boolean; message: string };
   updateFarmZoneSeason: (
     zoneId: string,
@@ -95,13 +98,29 @@ interface AppContextType {
       seasonStartDate: string;
       seasonEndDate: string;
       forecastYield: string;
+      expectedYieldValue?: number;
+      expectedYieldUnit?: string;
+      expectedHarvestDate?: string;
       notes?: string;
     }
-  ) => void;
+  ) => { success: boolean; message?: string };
   addDiary: (entry: Omit<DiaryEntry, 'id' | 'createdAt' | 'isLocked' | 'createdBy' | 'createdById'>) => { success: boolean; message?: string };
   updateDiary: (id: string, updatedData: Partial<DiaryEntry>) => { success: boolean; message?: string };
   deleteDiary: (id: string) => { success: boolean; message?: string };
-  addHarvest: (lot: Omit<HarvestLot, 'id' | 'code'>) => void;
+  addHarvest: (lot: Omit<HarvestLot, 'id' | 'code'> & { code?: string }) => { success: boolean; message?: string; lot?: HarvestLot };
+  updateHarvest: (lotId: string, updatedData: Partial<HarvestLot>) => { success: boolean; message?: string };
+  saveHarvestProcessing: (
+    harvestLotId: string,
+    processingData: {
+      date: string;
+      method: string;
+      inputQuantity: number;
+      outputQuantity: number;
+      notes?: string;
+      operatorName?: string;
+      status?: 'da_so_che' | 'khong_so_che';
+    }
+  ) => { success: boolean; message?: string };
   addProcessingLot: (lot: Omit<ProcessingLot, 'id' | 'code'>) => ProcessingLot;
   addPackage: (pkg: Omit<PackagedProduct, 'id' | 'code' | 'qrCodeUrl'>) => PackagedProduct;
   addOrder: (order: Omit<SalesOrder, 'id' | 'code'>) => void;
@@ -362,12 +381,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newZone: FarmZone = {
       ...zone,
       id: `fz-${Date.now()}`,
+      currentSeasonId: `s-fz-${Date.now()}`,
       areaOrQuantity: areaStr,
       forecastYield: forecastStr,
       farmingDays: 1,
       seasonHistory: [
         {
+          seasonId: `s-fz-${Date.now()}`,
           seasonName: zone.season,
+          variety: zone.variety,
+          areaValue: zone.areaValue,
+          areaUnit: zone.areaUnit,
+          areaOrQuantity: areaStr,
+          ownerId: zone.ownerId,
+          ownerName: zone.ownerName,
+          seasonStartDate: zone.seasonStartDate,
+          seasonEndDate: zone.seasonEndDate,
+          seasonStage: zone.seasonStage || 'Mới xuống giống',
+          expectedYieldValue: zone.expectedYieldValue,
+          expectedYieldUnit: zone.expectedYieldUnit,
+          expectedHarvestDate: zone.expectedHarvestDate || zone.seasonEndDate,
+          forecastYield: forecastStr,
+          notes: zone.notes,
           year: new Date().getFullYear(),
           yieldResult: forecastStr,
           status: 'Đang canh tác',
@@ -380,6 +415,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteFarmZone = (zoneId: string): { success: boolean; message: string } => {
+    const targetZone = farmZones.find((z) => z.id === zoneId);
+    if (!targetZone || targetZone.htxId !== currentHTXId) {
+      return {
+        success: false,
+        message: 'Vùng sản xuất không tồn tại hoặc không thuộc HTX hiện tại.',
+      };
+    }
+    if (currentRole === 'R06' || currentRole !== 'R03') {
+      return {
+        success: false,
+        message: 'Bạn không có quyền xóa vùng sản xuất. Chỉ Cán bộ Kỹ thuật (R03) mới có quyền thực hiện.',
+      };
+    }
     const hasDiaries = diaries.some((d) => d.farmZoneId === zoneId);
     const hasHarvests = harvests.some((h) => h.farmZoneId === zoneId);
 
@@ -406,15 +454,102 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       seasonStartDate: string;
       seasonEndDate: string;
       forecastYield: string;
+      expectedYieldValue?: number;
+      expectedYieldUnit?: string;
+      expectedHarvestDate?: string;
       notes?: string;
     }
   ) => {
+    const targetZone = farmZones.find((z) => z.id === zoneId);
+    if (!targetZone || targetZone.htxId !== currentHTXId) {
+      return {
+        success: false,
+        message: 'Vùng sản xuất không tồn tại hoặc không thuộc HTX hiện tại.',
+      };
+    }
+    if (currentRole === 'R06' || currentRole !== 'R03') {
+      return {
+        success: false,
+        message: 'Bạn không có quyền bắt đầu mùa vụ mới cho vùng này. Chỉ Cán bộ Kỹ thuật (R03) mới có quyền thực hiện.',
+      };
+    }
     setFarmZones((prev) =>
       prev.map((z) => {
         if (z.id !== zoneId) return z;
 
-        const previousHistory = z.seasonHistory || [];
-        const closedSeasonHistory = [
+        const oldSeasonId =
+          z.currentSeasonId ||
+          z.seasonHistory?.find((h) => h.seasonName === z.season)?.seasonId ||
+          `s-${z.id}-${Date.now() - 1000}`;
+
+        const harvestLotsForOldSeason = harvests.filter(
+          (h) => h.farmZoneId === zoneId && (h.seasonId === oldSeasonId || (!h.seasonId && h.seasonName === z.season))
+        );
+        const hasHarvestLots = harvestLotsForOldSeason.length > 0;
+
+        const oldStatus: 'Đang canh tác' | 'Đã thu hoạch' | 'Nghỉ vụ' | 'Đã kết thúc' = hasHarvestLots
+          ? 'Đã thu hoạch'
+          : 'Đã kết thúc';
+
+        let oldYieldResult = 'Chưa ghi nhận thu hoạch';
+        if (hasHarvestLots) {
+          const totalQty = harvestLotsForOldSeason.reduce((sum, h) => sum + (h.yieldQuantity || 0), 0);
+          const primaryUnit = harvestLotsForOldSeason[0]?.unit || 'kg';
+          oldYieldResult = `Đã thu hoạch: ${totalQty.toLocaleString('vi-VN')} ${primaryUnit}`;
+        }
+
+        const oldSeasonSnapshot: SeasonHistoryItem = {
+          seasonId: oldSeasonId,
+          seasonName: z.season,
+          year: new Date().getFullYear(),
+          variety: z.variety,
+          areaValue: z.areaValue,
+          areaUnit: z.areaUnit,
+          areaOrQuantity: z.areaOrQuantity,
+          ownerId: z.ownerId,
+          ownerName: z.ownerName,
+          seasonStartDate: z.seasonStartDate,
+          seasonEndDate: z.seasonEndDate,
+          seasonStage: z.seasonStage,
+          expectedYieldValue: z.expectedYieldValue,
+          expectedYieldUnit: z.expectedYieldUnit,
+          expectedHarvestDate: z.expectedHarvestDate || z.seasonEndDate,
+          forecastYield: z.forecastYield,
+          notes: z.notes,
+          yieldResult: oldYieldResult,
+          status: oldStatus,
+          quality: 'Đạt chuẩn HTX',
+          harvestDate: hasHarvestLots ? harvestLotsForOldSeason[0].date : undefined,
+        };
+
+        const previousHistory = (z.seasonHistory || []).filter(
+          (h) => h.seasonId !== oldSeasonId && h.seasonName !== z.season
+        );
+
+        const newSeasonId = `s-${zoneId}-${Date.now()}`;
+        const newSeasonSnapshot: SeasonHistoryItem = {
+          seasonId: newSeasonId,
+          seasonName: newSeasonData.season,
+          year: new Date().getFullYear(),
+          variety: newSeasonData.variety,
+          areaValue: z.areaValue,
+          areaUnit: z.areaUnit,
+          areaOrQuantity: z.areaOrQuantity,
+          ownerId: z.ownerId,
+          ownerName: z.ownerName,
+          seasonStartDate: newSeasonData.seasonStartDate,
+          seasonEndDate: newSeasonData.seasonEndDate,
+          seasonStage: 'Mới xuống giống (Ngày 1)',
+          expectedYieldValue: newSeasonData.expectedYieldValue || z.expectedYieldValue,
+          expectedYieldUnit: newSeasonData.expectedYieldUnit || z.expectedYieldUnit,
+          expectedHarvestDate: newSeasonData.expectedHarvestDate || newSeasonData.seasonEndDate,
+          forecastYield: newSeasonData.forecastYield,
+          notes: newSeasonData.notes || '',
+          yieldResult: `Dự kiến: ${newSeasonData.forecastYield}`,
+          status: 'Đang canh tác',
+          quality: 'Chuẩn HTX',
+        };
+        /*
           {
             seasonName: z.season,
             year: new Date().getFullYear(),
@@ -424,20 +559,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             harvestDate: new Date().toLocaleDateString('vi-VN'),
           },
           ...previousHistory.filter((h) => h.seasonName !== z.season),
-        ];
+        */
 
         return {
           ...z,
+          currentSeasonId: newSeasonId,
           season: newSeasonData.season,
           variety: newSeasonData.variety,
           seasonStartDate: newSeasonData.seasonStartDate,
           seasonEndDate: newSeasonData.seasonEndDate,
           seasonStage: 'Mới xuống giống (Ngày 1)',
+          expectedYieldValue: newSeasonData.expectedYieldValue || z.expectedYieldValue,
+          expectedYieldUnit: newSeasonData.expectedYieldUnit || z.expectedYieldUnit,
+          expectedHarvestDate: newSeasonData.expectedHarvestDate || newSeasonData.seasonEndDate,
           forecastYield: newSeasonData.forecastYield,
           farmingDays: 1,
           status: 'Đang canh tác',
           notes: newSeasonData.notes || z.notes,
           seasonHistory: [
+            newSeasonSnapshot,
+            oldSeasonSnapshot,
+            ...previousHistory,
+          ],
+          /*
             {
               seasonName: newSeasonData.season,
               year: new Date().getFullYear(),
@@ -446,16 +590,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               quality: 'Chuẩn HTX',
             },
             ...closedSeasonHistory,
-          ],
+          */
         };
       })
     );
+    return { success: true };
   };
 
-  const updateFarmZone = (zoneId: string, updatedData: Partial<FarmZone>) => {
+  const updateFarmZone = (
+    zoneId: string,
+    updatedData: Partial<FarmZone>
+  ): { success: boolean; message?: string } => {
+    const targetZone = farmZones.find((z) => z.id === zoneId);
+    if (!targetZone || targetZone.htxId !== currentHTXId) {
+      return {
+        success: false,
+        message: 'Vùng sản xuất không tồn tại hoặc không thuộc HTX hiện tại.',
+      };
+    }
+    if (currentRole === 'R06' || currentRole !== 'R03') {
+      return {
+        success: false,
+        message: 'Bạn không có quyền chỉnh sửa thông tin vùng sản xuất. Chỉ Cán bộ Kỹ thuật (R03) mới có quyền thực hiện.',
+      };
+    }
     setFarmZones((prev) =>
       prev.map((z) => (z.id === zoneId ? { ...z, ...updatedData } : z))
     );
+    return { success: true };
   };
 
   const addDiary = (entry: Omit<DiaryEntry, 'id' | 'createdAt' | 'isLocked' | 'createdBy' | 'createdById'>): { success: boolean; message?: string } => {
@@ -480,10 +642,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (entry.phiDays !== undefined && (!Number.isInteger(entry.phiDays) || entry.phiDays < 0)) {
       return { success: false, message: 'Thời gian cách ly PHI không hợp lệ.' };
     }
+
+    const seasonMatch = matchSeasonForZone(zone, entry.performedAt || entry.date);
+    if (seasonMatch.status === 'no_season') {
+      return { success: false, message: 'Thời điểm này chưa thuộc mùa vụ nào của thửa.' };
+    }
+    if (seasonMatch.status === 'overlap') {
+      return { success: false, message: 'Dữ liệu mùa vụ của thửa bị chồng thời gian tại thời điểm này.' };
+    }
+    const verifiedSeasonId = seasonMatch.season?.seasonId || entry.seasonId;
+    const verifiedSeasonName = seasonMatch.season?.seasonName || entry.seasonName;
     const newEntry: DiaryEntry = {
       ...entry,
       htxId: currentHTXId,
       farmZoneName: zone.name,
+      seasonId: verifiedSeasonId,
+      seasonName: verifiedSeasonName,
       subjectOwnerId: zone.ownerId,
       subjectOwnerName: zone.ownerName,
       id: `d-${Date.now()}`,
@@ -533,7 +707,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const editableFields: (keyof DiaryEntry)[] = [
       'workTypeName', 'workType', 'workTypes', 'workTypeIcon', 'date', 'performedAt', 'photoUrl', 'workDescription',
       'suppliesUsed', 'materialId', 'materialQuantity', 'materialUnit', 'phiDays',
-      'weatherCondition', 'weatherSuggestedAt', 'notes',
+      'weatherCondition', 'weatherSuggestedAt', 'notes', 'seasonId', 'seasonName',
     ];
     const changes: Partial<DiaryEntry> = {};
     editableFields.forEach((key) => {
@@ -541,6 +715,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         (changes as Record<string, unknown>)[key] = updatedData[key];
       }
     });
+
+    const targetZone = farmZones.find((zone) => zone.id === entry.farmZoneId);
+    if (targetZone && (updatedData.performedAt || updatedData.date)) {
+      const newTime = updatedData.performedAt || updatedData.date || entry.performedAt || entry.date;
+      const seasonMatch = matchSeasonForZone(targetZone, newTime);
+      if (seasonMatch.status === 'no_season') {
+        return { success: false, message: 'Thời điểm thực hiện mới không thuộc mùa vụ nào của thửa ruộng.' };
+      }
+      if (seasonMatch.status === 'overlap') {
+        return { success: false, message: 'Dữ liệu mùa vụ của thửa bị chồng thời gian tại thời điểm mới này.' };
+      }
+      if (seasonMatch.season) {
+        changes.seasonId = seasonMatch.season.seasonId;
+        changes.seasonName = seasonMatch.season.seasonName;
+      }
+    }
     setDiaries((prev) =>
       prev.map((d) => (d.id === id ? { ...d, ...changes } : d))
     );
@@ -563,12 +753,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
-  const addHarvest = (lot: Omit<HarvestLot, 'id' | 'code'>) => {
+  const addHarvest = (
+    lot: Omit<HarvestLot, 'id' | 'code'> & { code?: string }
+  ): { success: boolean; message?: string; lot?: HarvestLot } => {
+    const zone = farmZones.find((z) => z.id === lot.farmZoneId && z.htxId === currentHTXId);
+    if (!zone) {
+      return { success: false, message: 'Vùng sản xuất không tồn tại hoặc không thuộc HTX hiện tại.' };
+    }
+
+    if (!canCreateHarvest(currentRole, zone.ownerId, currentUser.id)) {
+      return {
+        success: false,
+        message: 'Bạn không có quyền khai báo thu hoạch cho vùng sản xuất này.',
+      };
+    }
+
+    if (!lot.yieldQuantity || lot.yieldQuantity <= 0) {
+      return { success: false, message: 'Tổng sản lượng thu hoạch phải lớn hơn 0.' };
+    }
+
+    if (lot.grade1Quantity !== undefined && lot.grade1Quantity < 0) {
+      return { success: false, message: 'Khối lượng Loại 1 không được là số âm.' };
+    }
+
+    if (lot.grade2Quantity !== undefined && lot.grade2Quantity < 0) {
+      return { success: false, message: 'Khối lượng Loại 2 không được là số âm.' };
+    }
+
+    const g1 = lot.grade1Quantity || 0;
+    const g2 = lot.grade2Quantity || 0;
+    if (g1 + g2 > lot.yieldQuantity) {
+      return {
+        success: false,
+        message: 'Tổng khối lượng Loại 1 và Loại 2 không được vượt quá tổng sản lượng thu hoạch.',
+      };
+    }
+
+    // Gắn với mùa vụ phù hợp với ngày thu hoạch
+    const seasonMatch = matchSeasonForZone(zone, lot.date);
+    const assignedSeasonId = seasonMatch.season?.seasonId || lot.seasonId || zone.currentSeasonId;
+    const assignedSeasonName = seasonMatch.season?.seasonName || lot.seasonName || zone.season;
+
+    const generatedCode = lot.code || `TH-${currentHTXId.toUpperCase()}-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+
     const newLot: HarvestLot = {
       ...lot,
       id: `h-${Date.now()}`,
-      code: `TH-${currentHTXId.toUpperCase()}-2026-${Math.floor(100 + Math.random() * 900)}`,
+      code: generatedCode,
+      htxId: currentHTXId,
+      farmZoneId: zone.id,
+      farmZoneName: zone.name,
+      zoneCode: zone.zoneCode,
+      variety: lot.variety || zone.variety,
+      ownerId: zone.ownerId,
+      ownerName: zone.ownerName,
+      seasonId: assignedSeasonId,
+      seasonName: assignedSeasonName,
+      processingStatus: lot.processingStatus || 'chua_so_che',
+      processingInfo: lot.processingInfo,
     };
+
     setHarvests((prev) => [newLot, ...prev]);
 
     // Bắn thông báo lô thu hoạch mới
@@ -577,7 +821,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-${Date.now()}`,
         title: '🌾 Lô thu hoạch nông sản mới',
         summary: `Đã ghi nhận lô ${newLot.code} sản lượng ${newLot.yieldQuantity} ${newLot.unit} tại ${newLot.farmZoneName}.`,
-        content: `Lô thu hoạch mã số ${newLot.code} đã được cập nhật thành công từ ${newLot.farmZoneName}. Nông sản đã sẵn sàng chuyển sang khâu làm sạch, sơ chế và đóng gói cấp tem mã QR truy xuất.`,
+        content: `Lô thu hoạch mã số ${newLot.code} đã được cập nhật thành công từ ${newLot.farmZoneName}. Nông sản đã sẵn sàng chuyển sang khâu đóng gói cấp tem mã QR truy xuất.`,
         date: 'Vừa xong',
         type: 'system',
         isRead: false,
@@ -592,6 +836,153 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Lỗi lưu lô thu hoạch qua API:', err);
       });
     }
+
+    return { success: true, lot: newLot };
+  };
+
+  const updateHarvest = (
+    lotId: string,
+    updatedData: Partial<HarvestLot>
+  ): { success: boolean; message?: string } => {
+    const lot = harvests.find((h) => h.id === lotId && h.htxId === currentHTXId);
+    if (!lot) return { success: false, message: 'Không tìm thấy lô thu hoạch.' };
+
+    setHarvests((prev) =>
+      prev.map((h) => (h.id === lotId ? { ...h, ...updatedData } : h))
+    );
+    return { success: true };
+  };
+
+  const saveHarvestProcessing = (
+    harvestLotId: string,
+    processingData: {
+      date: string;
+      method: string;
+      inputQuantity: number;
+      outputQuantity: number;
+      notes?: string;
+      operatorName?: string;
+      status?: 'da_so_che' | 'khong_so_che';
+    }
+  ): { success: boolean; message?: string } => {
+    if (!canManageProcessing(currentRole)) {
+      return {
+        success: false,
+        message: 'Chỉ Cán bộ Kỹ thuật (R03) hoặc Ban Quản trị (R02) mới có quyền ghi nhận/chỉnh sửa sơ chế.',
+      };
+    }
+
+    const lot = harvests.find((h) => h.id === harvestLotId && h.htxId === currentHTXId);
+    if (!lot) {
+      return { success: false, message: 'Không tìm thấy lô thu hoạch tương ứng.' };
+    }
+
+    if (processingData.status === 'khong_so_che') {
+      setHarvests((prev) =>
+        prev.map((h) =>
+          h.id === harvestLotId
+            ? { ...h, processingStatus: 'khong_so_che', processingInfo: undefined }
+            : h
+        )
+      );
+      return { success: true };
+    }
+
+    const input = processingData.inputQuantity;
+    const output = processingData.outputQuantity;
+
+    if (!input || input <= 0) {
+      return { success: false, message: 'Khối lượng đưa vào sơ chế phải lớn hơn 0.' };
+    }
+    if (!output || output <= 0) {
+      return { success: false, message: 'Khối lượng sau sơ chế (đầu ra) phải lớn hơn 0.' };
+    }
+    if (output > input) {
+      return { success: false, message: 'Khối lượng sau sơ chế không được vượt quá khối lượng đưa vào.' };
+    }
+    if (input > lot.yieldQuantity) {
+      return {
+        success: false,
+        message: `Khối lượng đưa vào sơ chế (${input.toLocaleString()} ${lot.unit}) không được vượt quá tổng sản lượng thu hoạch (${lot.yieldQuantity.toLocaleString()} ${lot.unit}).`,
+      };
+    }
+
+    const lossQuantity = Math.max(0, input - output);
+    const lossRatePercent = Number(((lossQuantity / input) * 100).toFixed(2));
+    const recoveryRatePercent = Number(((output / input) * 100).toFixed(2));
+
+    const newProcessingInfo: ProcessingInfo = {
+      date: processingData.date,
+      method: processingData.method,
+      inputQuantity: input,
+      outputQuantity: output,
+      unit: lot.unit,
+      lossQuantity,
+      lossRatePercent,
+      recoveryRatePercent,
+      notes: processingData.notes || '',
+      operatorName: processingData.operatorName || currentUser.name,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser.name,
+    };
+
+    // 1. Cập nhật trên HarvestLot
+    setHarvests((prev) =>
+      prev.map((h) =>
+        h.id === harvestLotId
+          ? {
+              ...h,
+              processingStatus: 'da_so_che',
+              processingInfo: newProcessingInfo,
+            }
+          : h
+      )
+    );
+
+    // 2. Đồng bộ ProcessingLot tương ứng để không làm mất dữ liệu cũ và các nơi tra cứu chung
+    setProcessingLots((prev) => {
+      const existing = prev.find((p) => p.harvestLotId === harvestLotId);
+      if (existing) {
+        return prev.map((p) =>
+          p.id === existing.id
+            ? {
+                ...p,
+                date: processingData.date,
+                method: processingData.method,
+                inputQuantity: input,
+                outputQuantity: output,
+                lossRatePercent,
+                operatorName: processingData.operatorName || currentUser.name,
+                notes: processingData.notes || p.notes,
+                status: 'Đã sơ chế',
+              }
+            : p
+        );
+      } else {
+        const newProcLot: ProcessingLot = {
+          id: `sc-${Date.now()}`,
+          code: `SC-${currentHTXId.toUpperCase()}-2026-${Math.floor(100 + Math.random() * 900)}`,
+          htxId: currentHTXId,
+          harvestLotId: lot.id,
+          harvestLotCode: lot.code,
+          farmZoneName: lot.farmZoneName,
+          productName: lot.variety || lot.farmZoneName,
+          date: processingData.date,
+          method: processingData.method,
+          inputQuantity: input,
+          outputQuantity: output,
+          unit: lot.unit,
+          lossRatePercent,
+          operatorName: processingData.operatorName || currentUser.name,
+          photoUrl: lot.photoUrl,
+          notes: processingData.notes || '',
+          status: 'Đã sơ chế',
+        };
+        return [newProcLot, ...prev];
+      }
+    });
+
+    return { success: true };
   };
 
   const addProcessingLot = (lot: Omit<ProcessingLot, 'id' | 'code'>): ProcessingLot => {
@@ -613,14 +1004,97 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addPackage = (pkg: Omit<PackagedProduct, 'id' | 'code' | 'qrCodeUrl'>): PackagedProduct => {
+    if (!canManagePackaging(currentRole)) {
+      throw new Error('Chỉ Cán bộ Kỹ thuật (R03) hoặc Ban Quản trị (R02) mới có quyền đóng gói và cấp tem mã QR.');
+    }
+
+    const harvestLot = harvests.find((h) => h.id === pkg.harvestLotId);
+    if (!harvestLot) {
+      throw new Error('Không tìm thấy lô thu hoạch được gắn tem đóng gói.');
+    }
+
+    // Kiểm tra khối lượng khả dụng
+    const isProcessed = harvestLot.processingStatus === 'da_so_che' && !!harvestLot.processingInfo?.outputQuantity;
+    const totalAvailable = isProcessed
+      ? harvestLot.processingInfo!.outputQuantity
+      : harvestLot.yieldQuantity;
+
+    const sourceUnit = isProcessed
+      ? (harvestLot.processingInfo!.unit || harvestLot.unit)
+      : harvestLot.unit;
+
+    const packagesForLot = packages.filter((p) => p.harvestLotId === harvestLot.id);
+    const alreadyPackaged = packagesForLot.reduce((sum, p) => {
+      const weight = p.netWeightPerPack || (sourceUnit === 'con' ? 1 : 1);
+      return sum + p.packQuantity * weight;
+    }, 0);
+
+    const netWeight = pkg.netWeightPerPack || (sourceUnit === 'con' ? 1 : 1);
+    const attemptedPackAmount = pkg.packQuantity * netWeight;
+    const remainingAvailable = Math.max(0, totalAvailable - alreadyPackaged);
+
+    if (attemptedPackAmount > remainingAvailable + 0.001) {
+      throw new Error(
+        `Khối lượng đóng gói (${attemptedPackAmount.toLocaleString()} ${sourceUnit}) vượt quá lượng khả dụng còn lại (${remainingAvailable.toLocaleString()} ${sourceUnit}).`
+      );
+    }
+
+    // Kiểm tra ngày đóng gói và hạn sử dụng
+    if (pkg.createdDate < harvestLot.date) {
+      throw new Error('Ngày đóng gói không được trước ngày thu hoạch.');
+    }
+    if (isProcessed && harvestLot.processingInfo?.date && pkg.createdDate < harvestLot.processingInfo.date) {
+      throw new Error('Ngày đóng gói không được trước ngày sơ chế.');
+    }
+    if (pkg.expiryDate <= pkg.createdDate) {
+      throw new Error('Hạn sử dụng khuyến nghị phải sau ngày đóng gói.');
+    }
+
+    // Bản chụp sơ chế tại thời điểm đóng gói
+    const procSnapshot: PackagingProcessingSnapshot = isProcessed
+      ? {
+          hasProcessing: true,
+          statusText: 'Đã sơ chế',
+          date: harvestLot.processingInfo?.date,
+          method: harvestLot.processingInfo?.method,
+          inputQuantity: harvestLot.processingInfo?.inputQuantity,
+          outputQuantity: harvestLot.processingInfo?.outputQuantity,
+          unit: harvestLot.processingInfo?.unit || harvestLot.unit,
+          lossQuantity: harvestLot.processingInfo?.lossQuantity,
+          lossRatePercent: harvestLot.processingInfo?.lossRatePercent,
+          recoveryRatePercent: harvestLot.processingInfo?.recoveryRatePercent,
+          notes: harvestLot.processingInfo?.notes,
+          operatorName: harvestLot.processingInfo?.operatorName,
+        }
+      : {
+          hasProcessing: false,
+          statusText: harvestLot.processingStatus === 'khong_so_che' ? 'Không sơ chế' : 'Chưa sơ chế',
+        };
+
+    const harvestSnapshot = {
+      harvestDate: harvestLot.date,
+      farmZoneName: harvestLot.farmZoneName,
+      zoneCode: harvestLot.zoneCode,
+      variety: harvestLot.variety,
+      ownerName: harvestLot.ownerName,
+      yieldQuantity: harvestLot.yieldQuantity,
+      unit: harvestLot.unit,
+    };
+
     const randomCode = `SP-${currentHTXId.toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
     const fullTraceCode = `TXNG-HY-${randomCode}`;
     const newPkg: PackagedProduct = {
       ...pkg,
       id: `pkg-${Date.now()}`,
       code: randomCode,
+      harvestLotCode: harvestLot.code,
+      netWeightPerPack: netWeight,
+      netWeightUnit: pkg.netWeightUnit || sourceUnit,
       qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://hungyen-htx.vn/truy-xuat?code=${fullTraceCode}`,
+      processingSnapshot: procSnapshot,
+      harvestSnapshot,
     };
+
     setPackages((prev) => [newPkg, ...prev]);
 
     if (!API_CONFIG.USE_MOCK) {
@@ -816,6 +1290,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateDiary,
         deleteDiary,
         addHarvest,
+        updateHarvest,
+        saveHarvestProcessing,
         addProcessingLot,
         addPackage,
         addOrder,
