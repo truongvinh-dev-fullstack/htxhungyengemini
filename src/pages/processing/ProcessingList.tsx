@@ -14,8 +14,8 @@ export const ProcessingList: React.FC = () => {
       />
 
       <div className="p-4 space-y-4">
-        {/* Chuỗi 3 công đoạn */}
-        <PostHarvestWorkflowTabs activeTab="processing" />
+        {/* Điều hướng công đoạn */}
+        <PostHarvestWorkflowTabs activeTab="harvest" />
 
         {/* Action Banner */}
         <div className="bg-blue-50 border-2 border-blue-300 rounded-3xl p-4 flex items-center justify-between gap-3">

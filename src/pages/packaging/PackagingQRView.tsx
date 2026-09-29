@@ -1,11 +1,17 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
-import { PackagedProduct } from '../../types';
+import { canViewPackagedProduct } from '../../utils/permissions';
 
 export const PackagingQRView: React.FC = () => {
-  const { screenParams, currentHTX, goBack, navigateTo, harvests, processingLots } = useApp();
-  const pkg: PackagedProduct = screenParams?.pkg;
+  const { screenParams, currentHTX, currentRole, currentUser, packages, goBack, navigateTo, harvests, processingLots, productStocks } = useApp();
+  const pkgId = screenParams?.pkg?.id || screenParams?.pkgId;
+  const pkg = packages.find((item) =>
+    item.id === pkgId && canViewPackagedProduct(
+      currentRole, item, currentHTX.id, currentUser.id,
+      harvests.find((lot) => lot.id === item.harvestLotId)
+    )
+  );
 
   if (!pkg) {
     return (
@@ -131,7 +137,29 @@ export const PackagingQRView: React.FC = () => {
               </div>
 
               <div className="flex items-start justify-between">
-                <span className="text-slate-500">4. Sơ chế:</span>
+                <span className="text-slate-500">4. Nguồn gốc đóng gói:</span>
+                <span className="font-bold text-slate-900 text-right">
+                  {pkg.sourceProductState === 'hang_tho'
+                    ? '🌾 Từ hàng thô · Chưa sơ chế'
+                    : pkg.sourceProductState === 'da_xu_ly'
+                    ? '⚙️ Từ hàng đã sơ chế'
+                    : (pkg.isLiveProduct || (!hasProc && !pkg.processingLotId))
+                    ? '🌾 Từ hàng thô'
+                    : '⚠️ Nguồn đóng gói chưa xác định'}
+                </span>
+              </div>
+
+              {pkg.sourceStockItemId && (
+                <div className="flex items-start justify-between">
+                  <span className="text-slate-500">5. Dòng tồn nguồn:</span>
+                  <span className="font-mono font-bold text-blue-900 text-right">
+                    {pkg.sourceStockItemId}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-start justify-between">
+                <span className="text-slate-500">{pkg.sourceStockItemId ? '6' : '5'}. Sơ chế:</span>
                 <span className="font-semibold text-right">
                   {hasProc ? (
                     <span className="text-blue-800 font-bold">
@@ -144,7 +172,7 @@ export const PackagingQRView: React.FC = () => {
               </div>
 
               <div className="flex items-start justify-between">
-                <span className="text-slate-500">5. Tiêu chuẩn dán nhãn:</span>
+                <span className="text-slate-500">{pkg.sourceStockItemId ? '7' : '6'}. Tiêu chuẩn dán nhãn:</span>
                 <span className="font-bold text-emerald-700 text-right">
                   {pkg.standard}
                 </span>

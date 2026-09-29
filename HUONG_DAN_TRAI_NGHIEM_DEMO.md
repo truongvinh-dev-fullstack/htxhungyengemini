@@ -34,7 +34,7 @@ Hệ thống đã chuẩn bị sẵn dữ liệu mẫu cho cả **3 HTX** đại
 
 | HTX | Địa bàn | Nông sản chủ lực | Đại diện tài khoản mẫu |
 |---|---|---|---|
-| **HTX Dịch vụ Nông nghiệp An Ninh** | Tiền Lữ | Lúa sạch VietGAP (Bắc Thơm 7, ST25) | Bác Nguyễn Văn An (62 tuổi) |
+| **HTX Dịch vụ Nông nghiệp An Ninh** | Tiền Lữ | Lúa sạch VietGAP (Bắc Thơm số 7) | Bác Nguyễn Văn An (62 tuổi) |
 | **HTX Chăn nuôi & Kinh doanh Gà Đông Tảo** | Khoái Châu | Gà Đông Tảo thuần chủng tiến vua | Bác Trần Đình Trọng (58 tuổi) |
 | **HTX Cây ăn quả đặc sản & NTTS Quyết Thắng** | TP. Hưng Yên | Nhãn lồng Hương Chi & Cá lăng lồng | Bác Phạm Thị Mai (65 tuổi) |
 
@@ -67,16 +67,16 @@ Hệ thống đã chuẩn bị sẵn dữ liệu mẫu cho cả **3 HTX** đại
 ### KỊCH BẢN 2: TRANG CHỦ & TRỢ LÝ GIỌNG NÓI (HOME)
 1. **Lời chào & Thời tiết:** Quan sát banner tên thành viên, chức danh tổ và dự báo thời tiết nông vụ Hưng Yên hôm nay.
 2. **Trợ lý giọng nói (Voice Assistant):** Bấm vào icon **📢** hoặc nút **🔊 "Đọc to"** ở góc trên phải. Hệ thống sẽ đọc to lời chào và hướng dẫn bằng giọng tiếng Việt (kèm bong bóng thoại trực quan, có nút *Đọc lại* và *Đóng*).
-3. **Cảnh báo nhật ký hôm nay (CN-3.5.4):** Nếu hôm nay chưa ghi nhật ký, Trang chủ xuất hiện banner màu cam nhấp nháy: *"Hôm nay bác chưa ghi nhật ký!"* kèm nút *"Ghi ngay ➜"*.
+3. **Nhắc ghi nhật ký hôm nay (CN-3.5.4):** Nếu hôm nay chưa ghi nhật ký, Trang chủ hiển thị lời nhắc *"Ghi lại việc bác đã làm"* kèm nút *"Ghi ngay ➜"*. Việc dự kiến đến hạn còn được nhắc trong mục Thông báo.
 4. **Lưới chức năng ô lớn:** Bố cục dạng thẻ card lớn vuông vức, chạm mở nhanh từng phần.
 
 ---
 
-### KỊCH BẢN 3: SỔ NHẬT KÝ ĐỒNG RUỘNG (CN-3.5.1 – CN-3.5.6) ★ ƯU TIÊN 1
-1. **Xem danh sách timeline:** Từ Trang chủ, chạm ô **"📖 Sổ nhật ký đồng ruộng"**. Các công việc được sắp xếp theo ngày kèm icon trực quan (💧 Tưới nước, 🌱 Bón phân, 🌿 Làm cỏ).
+### KỊCH BẢN 3: NHẬT KÝ SẢN XUẤT (CN-3.5.1 – CN-3.5.6) ★ ƯU TIÊN 1
+1. **Xem danh sách timeline:** Từ Trang chủ, chạm ô **"📖 Nhật ký sản xuất"**. Các việc đã ghi được sắp xếp theo ngày kèm biểu tượng trực quan; áp dụng cho ruộng, vườn, chuồng nuôi và ao/lồng cá.
 2. **Luồng 4 bước thêm nhật ký mới (CN-3.5.2):** Bấm nút **"➕ Ghi mới"**:
    * *Bước 1 (Chọn ngày & Vùng):* Bác nông dân chọn nhanh nút *"📅 Hôm nay"* hoặc *"📅 Hôm qua"*, chọn thửa ruộng từ danh sách. Bấm *"Tiếp tục: Bước 2"*.
-   * *Bước 2 (Chọn nhiều công việc cùng lúc):* Bác nông dân có thể chạm chọn **cùng lúc nhiều việc đã làm** trong buổi ra đồng (ví dụ: vừa chạm *Tưới nước 💧* vừa chạm *Bón phân 🌱*). Thẻ được chọn sẽ có viền xanh đậm và dấu tick `✓ Đã chọn`. Nhập tên vật tư chung (nếu có). Bấm *"Sang Bước 3"*.
+   * *Bước 2 (Chọn việc đã làm):* Ứng dụng gợi ý tối đa ba việc gần ngày dự kiến của đúng vùng và vụ/lứa; bác có thể chạm một gợi ý hoặc tự chọn nhiều loại việc đã làm. Gợi ý không bắt buộc và không tự xác nhận hoàn thành. Nhập vật tư (nếu có), rồi bấm *"Sang Bước 3"*.
    * *Bước 3 (Chụp ảnh camera trực tiếp):* Khung ngắm camera đồng ruộng với chỉ dấu vị trí xã An Ninh, cho phép chọn các ảnh chụp thực tế sinh động. Bấm *"Sang Bước 4"*.
    * *Bước 4 (Kiểm tra & Lưu):* Xem lại bản tóm tắt hiển thị toàn bộ các việc đã chọn kèm icon, nhập ghi chú ngắn $\rightarrow$ Bấm **"💾 LƯU NHẬT KÝ"**.
 3. **Kiểm tra kết quả:** Quay lại Trang chủ, banner nhắc nhở màu cam tự động biến mất vì hệ thống ghi nhận hộ đã hoàn thành nhật ký trong ngày!
@@ -150,11 +150,117 @@ Hệ thống đã chuẩn bị sẵn dữ liệu mẫu cho cả **3 HTX** đại
 
 ---
 
+### KỊCH BẢN 8: CHUỖI CUNG ỨNG LINH HOẠT & PHÂN BỔ SẢN LƯỢNG 4 NHÁNH (MỚI) ★
+
+Hệ thống đã nâng cấp phá vỡ luồng tuyến tính cứng nhắc, cho phép phân bổ sản lượng thu hoạch vào 4 nhánh:
+- **Nhánh A:** Hộ tự sơ chế / đóng gói $\rightarrow$ Bán trực tiếp cho thương lái / khách lẻ.
+- **Nhánh B:** Hộ giao hàng thô cho HTX $\rightarrow$ HTX kiểm nhận, cân đối soát $\rightarrow$ Sơ chế / đóng gói $\rightarrow$ HTX bán.
+- **Nhánh C:** Hộ đã đóng gói $\rightarrow$ Giao cho HTX $\rightarrow$ HTX bán nguyên bao gói hoặc đóng gói lại.
+- **Nhánh D:** Hàng tồn trữ tại hộ hoặc kho HTX chờ xuất bán.
+
+#### 1. Thao tác Phân bổ Sản lượng Lô 1.000 kg Nhãn lồng (`h-04`):
+1. Đăng nhập hoặc chuyển vai trò **R06 - Hộ nông dân** (`Bác Phạm Thị Mai - HTX Quyết Thắng`).
+2. Vào **Thu hoạch** $\rightarrow$ Chọn lô nhãn `h-04` (Sản lượng thu hoạch: 1.000 kg).
+3. Quan sát **Thẻ Phân bổ Sản lượng**:
+   - **Bán trực tiếp:** Đã ghi nhận 200 kg.
+   - **Giao HTX:** Đã bàn giao 750 kg (gồm 600 kg hàng thô + 150 kg đóng thùng 10kg).
+   - **Tồn khả dụng tại hộ:** Còn 50 kg (có thể tiếp tục bán, đóng gói hoặc giao thêm).
+4. Thử các nút hành động hiện trường:
+   - **"🛒 Bán trực tiếp"**: Mở màn hình tạo đơn bán hàng, bên bán tự động là Hộ dân, hệ thống kiểm tra tồn khả dụng (tối đa 50 kg).
+   - **"🤝 Giao cho HTX"**: Mở biểu mẫu phiếu giao, chọn mua đứt hoặc ký gửi, nhập số lượng và giá thỏa thuận. Phiếu chờ chỉ giữ chỗ lượng, chưa tính là HTX đã nhận.
+   - **"⚙️ Sơ chế mẻ mới"**: Mở modal sơ chế tại chỗ, chọn phương pháp (Xay xát / Phân loại / Sấy khô / Sơ chế làm sạch), tính tỷ lệ thu hồi và ghi hao hụt.
+   - **"📦 Đóng gói & QR"**: Hộ tự đóng gói lô của mình, tạo tem QR trực tiếp.
+
+#### 2. Đối soát Cân nhận Hàng tại HTX (Vai trò R04 Thủ kho / Kế toán):
+1. Chuyển sang vai trò **R04 - Kế toán/Kho** hoặc **R02 - Quản lý HTX** (`HTX Quyết Thắng`).
+2. Từ Trang chủ chạm **"Chờ nhận"** để mở **Phiếu giao HTX** theo nhóm chờ; chạm phiếu để xem chi tiết và kiểm nhận.
+3. Thử tạo phiếu ký gửi 300 kg từ lô `TH-AN-2026-003` bằng tài khoản R06 An Ninh:
+   - Lô thu hoạch 1.500 kg; 1.000 kg đã được HTX mua đứt, 300 kg đang chờ, hộ còn 200 kg khả dụng.
+   - HTX kiểm nhận 280 kg $\rightarrow$ chênh lệch `-20 kg`; 20 kg chưa nhận trở lại phần khả dụng của hộ.
+   - Nhập đánh giá chất lượng (Đạt loại A/B) và ký xác nhận.
+   - Hàng ký gửi sau kiểm nhận vẫn thuộc hộ; HTX chỉ giữ và bán hộ. Thử từ chối phiếu khác để thấy lượng giữ chỗ được giải phóng.
+
+#### 3. HTX Sơ chế và Chống Âm Tồn Kho:
+- HTX tiến hành sơ chế 600 kg nhãn thô $\rightarrow$ Đầu ra thu được 540 kg nhãn loại 1 xuất khẩu, ghi nhận hao hụt 60 kg (tỷ lệ thu hồi 90%).
+- Hệ thống ghi mẻ 600 kg nhãn thô thành 540 kg sau sơ chế. Fixture đã bán rời 200 kg và đóng hộp 100 kg; còn 240 kg ở trạng thái sau sơ chế.
+- Khi tạo đơn bán hàng của HTX, hệ thống kiểm tra tồn kho theo từng trạng thái hàng (thô, sơ chế, đóng gói). Không cho bán vượt tồn.
+- Khi đơn hàng bị **Hủy**, hệ thống tự động hoàn trả số lượng hàng về tồn kho tương ứng.
+
+#### 4. Nông sản Tươi sống & Bán Sống (Gà Đông Tảo, Cá lồng Sông Luộc):
+- Khi đóng gói hoặc xuất bán gà/cá bán sống: Đánh dấu tùy chọn **"Hàng tươi sống / Bán sống (không đóng gói bao bì cố định)"**.
+- Hệ thống không ép buộc nhập quy cách gói cố định, hạn sử dụng hay cấu trúc đóng gói cứng nhắc.
+- Đơn vị tính kiểm tra chuẩn theo loại hình sản xuất: số con (gà), thể tích m³ (lồng cá sông Luộc), diện tích m²/sào (thửa lúa, vườn nhãn).
+
+#### 5. Đề nghị Điều chỉnh Nhật ký đã Khóa sau 24 Giờ (Audit Trail VietGAP):
+1. Chuyển sang vai trò **R06 - Hộ nông dân**.
+2. Mở một bản ghi nhật ký đã tạo quá 24 giờ $\rightarrow$ Nút sửa trực tiếp bị khóa để đảm bảo tính toàn vẹn dữ liệu.
+3. Bấm **"📝 Gửi đề nghị điều chỉnh nhật ký"** $\rightarrow$ Nhập lý do (ví dụ: *"Bổ sung liều lượng vôi bột khử khuẩn chuồng"*).
+4. Chuyển sang vai trò **R02 - Quản trị HTX** $\rightarrow$ Mở nhật ký đó $\rightarrow$ Duyệt hoặc Từ chối đề nghị điều chỉnh.
+5. Bản ghi lưu đầy đủ lịch sử thay đổi (Audit Trail): ai sửa, ngày giờ, lý do và người phê duyệt theo đúng tiêu chuẩn VietGAP.
+
+#### 6. Quét Mã QR Mẻ Gom Lô & Bảo vệ Thông tin Riêng tư:
+1. Vào **Quét mã xem nguồn gốc** $\rightarrow$ Quét sản phẩm được gom từ nhiều hộ xã viên.
+2. Trang thông tin công khai hiển thị chi tiết: tỷ lệ đóng góp của từng hộ xã viên vào mẻ sản phẩm.
+3. Số điện thoại cá nhân của hộ nông dân được che bảo mật (`0988***234`) tránh bị lộ lọt.
+4. Thời hạn chứng nhận VietGAP được kiểm tra thực tế theo ngày đóng gói.
+
+### KỊCH BẢN 9: ĐIỀU PHỐI TRƯỚC THU HOẠCH, QR KHÔNG ĐÓNG GÓI, ĐỐI SOÁT CHÊNH LỆCH & SAU BÁN HÀNG (MỚI BỔ SUNG) ★★★
+
+Kịch bản này hoàn thiện trọn vẹn chuỗi giá trị nông sản Hưng Yên từ lập kế hoạch trước thu hoạch đến chăm sóc khách hàng sau bán hàng:
+
+#### 1. Nhắc việc theo vụ/lứa và ghi nhật ký:
+1. **Truy cập:** Màn **"Công việc"** riêng được bỏ cho mọi vai trò trong Mini App. Vai trò có quyền xem nhật ký dùng mục **"Nhật ký sản xuất"**; hộ dân thấy việc dự kiến đến hạn trong **Thông báo** và có thể mở thẳng biểu mẫu nhật ký từ lời nhắc.
+2. **HTX An Ninh (Lúa sạch):** Với vùng và vụ lúa phù hợp, biểu mẫu gợi ý việc chăm sóc hoặc thu hoạch gần ngày dự kiến. Hộ chỉ ghi sau khi thực hiện, kèm kết quả thực tế và ảnh nếu có.
+3. **HTX Đông Tảo (Gà đặc sản):** Việc theo lứa nuôi như tiêm phòng được nhắc cho đúng hộ và gợi ý khi ghi nhật ký; người dùng vẫn có thể tự chọn loại việc khác.
+4. **HTX Quyết Thắng (Cá lồng & Vườn nhãn):** Nhật ký ghi việc đã làm cho đúng đơn vị sản xuất và vụ/lứa. Lịch dự kiến chỉ hỗ trợ nhắc và gợi ý, không thay thế dữ liệu thực tế do hộ xác nhận.
+
+#### 2. Giao nhận & Đối soát chênh lệch cân đo:
+1. Vào **Thu hoạch** $\rightarrow$ Chọn lô thu hoạch (ví dụ: `TH-AN-2026-001` thóc tươi Bắc Thơm).
+2. Quan sát mục **"Biên bản Giao nhận & Đối soát chênh lệch"**:
+   - Phiếu mẫu `GN-AN-2026-009` lấy từ lô `TH-AN-2026-001` có sản lượng 1.200 kg: hộ khai 1.200 kg, HTX thực nhận đủ 1.200 kg. Chênh lệch cân thiếu được thử bằng phiếu 300 kg mới ở kịch bản trên.
+   - **Gửi ý kiến giải trình:** Nếu cân thiếu, hộ mở phiếu đã kiểm nhận và ghi lý do trong mục đối soát.
+   - **Chốt đối soát (Vai trò R04/R02):** Kế toán bấm **"✓ Chốt đối soát khớp số liệu"**.
+   - **Minh bạch tài chính:** Phiếu mua đứt `GN-AN-2026-009` có đơn giá 10.500 đ/kg, tổng tiền 12.600.000 đ, tạm ứng 10.000.000 đ. Phiếu ký gửi không tự tạo khoản phải trả do HTX mua hàng.
+
+#### 3. QR Độc lập với Đóng gói (Bán tươi sống, Bán xá nguyên trạng):
+1. **Xem/In QR Lô bán sống:**
+   - Vào chi tiết Lô gà sống (`TH-DT-2026-001`) hoặc Lô cá lăng sống (`TH-QT-2026-003B`) $\rightarrow$ Bấm **"🏷️ Xem / In mã QR Lô bán sống (Không đóng gói)"**.
+   - Pop-up hiển thị mã QR truy xuất độc lập kèm nút in tem Bluetooth hoặc xem trang truy xuất.
+2. **Xem/In QR Phiếu xuất / Đơn bán hàng:**
+   - Vào **Bán hàng** $\rightarrow$ Mở đơn bán gà sống `DH-DT-2026-015` $\rightarrow$ Bấm **"🏷️ Mã QR phiếu xuất"**.
+3. **Quét xác thực nguồn gốc không dựng đóng gói giả:**
+   - Dùng camera quét mã QR của Lô hoặc Phiếu xuất nói trên.
+   - Trang truy xuất hiển thị chuẩn xác: **"Bán nông sản tươi sống / Hàng xá nguyên trạng"**, trỏ thẳng về hộ nuôi, cơ sở sản xuất, chu kỳ và nhật ký VietGAP mà **hoàn toàn không dựng công đoạn đóng gói giả**.
+   - Số điện thoại chủ hộ được che bảo mật (`0988***234`).
+4. **HTX bán nguyên trạng hàng hộ đã đóng gói:**
+   - Đối với thùng nhãn hộ tự đóng gói (`QR-QT-NHAN-005`), khi HTX xuất bán, mã QR vẫn truy nguyên về lô gốc `h-04` và hộ bác Mai, không bắt buộc phải đóng gói lại.
+
+#### 4. Sau bán hàng: Giao hàng thực tế, Công nợ & Phản hồi chất lượng:
+1. **Giao hàng thực tế & Kiểm soát tồn lô:**
+   - Mở chi tiết đơn hàng (ví dụ: `DH-AN-2026-009`) $\rightarrow$ Bấm **"🚚 Cập nhật lần giao thực tế"**.
+   - Nhập số lượng giao thực tế, biển số xe, người nhận. Hệ thống kiểm tra đối chiếu không cho phép giao vượt quá số lượng đơn hoặc tồn lô.
+   - Thẻ đơn hàng cập nhật tiến độ: *Chưa giao $\rightarrow$ Đang giao $\rightarrow$ Đã giao thành công*.
+2. **Đối soát công nợ đơn hàng:**
+   - Thẻ tài chính hiển thị rõ ràng: Tổng giá trị, Đã thanh toán, và **Còn nợ cần thu** (tô màu cam nổi bật).
+3. **Phản hồi chất lượng khách hàng:**
+   - Vào ô **"💬 Phản hồi chất lượng"** tại Trang chủ để xem ý kiến của đối tác, siêu thị, thương lái (WinMart, nhà hàng, đại lý).
+   - Người phụ trách có thể bấm **"Xử lý phản hồi"** để ghi nhận giải pháp xử lý kỹ thuật hoặc đổi trả.
+4. **Báo cáo tóm tắt hiện trường thời gian thực:**
+   - Đầu trang chủ tích hợp widget **"Tóm tắt hiện trường (Thời gian thực)"** hiển thị: việc trễ hạn, việc hôm nay, lô chờ kiểm nhận, đơn chờ giao, phản hồi khách hàng chưa xử lý. Toàn bộ số liệu tính toán trực tiếp từ dữ liệu giao dịch thật của HTX.
+
+---
+
 ## IV. BẢO TRÌ VÀ MỞ RỘNG MÃ NGUỒN
 
 * **Cấu trúc thư mục:**
-  * `src/context/AppContext.tsx`: Quản lý toàn bộ State, cơ chế xác thực, chuyển vai trò, điều hướng và dữ liệu CRUD.
-  * `src/mock/data.ts`: Bộ dữ liệu mẫu chi tiết cho 3 HTX Hưng Yên.
-  * `src/components/`: Header có nút Back/Voice, BottomNav Zalo, CounterInput +/-, VoiceModal, RoleHTXSwitcher.
-  * `src/pages/`: Toàn bộ các trang nghiệp vụ từ Auth, Home, Diary, Farm, Harvest, Packaging, Sales, Trace, Members, Inventory đến Dashboard.
-* **Kiểm tra tính đúng đắn mã nguồn:** Chạy `npx tsc --noEmit` để đảm bảo 100% type-safe, không có bất kỳ cảnh báo hoặc lỗi cú pháp nào.
+  * `src/context/AppContext.tsx`: Quản lý toàn bộ State, cơ chế xác thực, phân quyền 4 vai trò, điều hướng và dữ liệu CRUD chuỗi cung ứng linh hoạt.
+  * `src/mock/data.ts`: Bộ dữ liệu mẫu chi tiết cho 3 HTX Hưng Yên (tiêu chí chất lượng động, lô thu hoạch, giao nhận, tồn kho 2 cấp, lịch sử sơ chế).
+  * `src/utils/permissions.ts`: Phân quyền chi tiết cho R06, R03, R04, R02 theo phạm vi sở hữu lô và HTX.
+  * `src/components/`: Header, BottomNav, ProductHandoverModal, HarvestProcessingModal, CounterInput, VoiceModal, RoleHTXSwitcher.
+  * `src/pages/`: Toàn bộ các trang nghiệp vụ: Auth, Home, Diary, Farm, Harvest, Packaging, Sales, Trace, Members, Inventory, Dashboard, Tasks, Feedback.
+* **Bộ kiểm thử tự động (Unit / Integration Tests):**
+  * File test: `src/test/businessWorkflow.test.ts`
+  * Chạy test: `npx tsx src/test/businessWorkflow.test.ts` (33/33 tests PASS trong 11 suites).
+* **Kiểm tra tính đúng đắn mã nguồn:** Chạy `npx tsc --noEmit` và `npm run build` để đảm bảo 100% type-safe và đóng gói production thành công.
+
+

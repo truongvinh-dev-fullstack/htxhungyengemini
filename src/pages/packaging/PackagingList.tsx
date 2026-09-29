@@ -1,17 +1,26 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
-import { PackagedProduct } from '../../types';
 import { PostHarvestWorkflowTabs } from '../../components/PostHarvestWorkflowTabs';
+import { canManagePackaging, canViewPackagedProduct } from '../../utils/permissions';
 
 export const PackagingList: React.FC = () => {
-  const { packages, navigateTo } = useApp();
+  const { packages, harvests, currentHTX, currentRole, currentUser, navigateTo } = useApp();
+  const canCreate = canManagePackaging(currentRole);
+  const visiblePackages = packages.filter((pkg) =>
+    canViewPackagedProduct(
+      currentRole, pkg, currentHTX.id, currentUser.id,
+      harvests.find((lot) => lot.id === pkg.harvestLotId)
+    )
+  );
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
-        title="Đóng gói sản phẩm & Mã QR"
-        voiceText="Đây là danh sách các gói sản phẩm đã được đóng gói và dán mã QR truy xuất nguồn gốc. Bác có thể bấm nút Tạo mã mới để sinh mã QR dán bao bì."
+        title={currentRole === 'R04' ? 'Lô đóng gói & QR' : 'Đóng gói sản phẩm & Mã QR'}
+        voiceText={canCreate
+          ? 'Đây là danh sách lô đã đóng gói và mã QR. Bác có thể bấm Tạo mã mới để đóng gói lô thu hoạch.'
+          : 'Đây là danh sách lô đã đóng gói và mã QR thuộc Hợp tác xã hiện tại.'}
       />
 
       <div className="p-4 space-y-4">
@@ -19,7 +28,7 @@ export const PackagingList: React.FC = () => {
         <PostHarvestWorkflowTabs activeTab="packaging" />
 
         {/* Action Banner */}
-        <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-4 flex items-center justify-between gap-3">
+        {canCreate && <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-4 flex items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-extrabold text-emerald-950">Đóng gói đợt mới</h3>
             <p className="text-xs text-emerald-800 font-medium mt-0.5">
@@ -33,25 +42,27 @@ export const PackagingList: React.FC = () => {
             <span className="text-xl">➕</span>
             <span>Tạo mã mới</span>
           </button>
-        </div>
+        </div>}
 
         {/* List of Packaged items */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-lg font-bold text-slate-800">Sản phẩm đã tạo mã QR</h3>
-            <span className="text-xs text-slate-500 font-semibold">{packages.length} lô</span>
+            <span className="text-xs text-slate-500 font-semibold">{visiblePackages.length} lô</span>
           </div>
 
-          {packages.length === 0 ? (
+          {visiblePackages.length === 0 ? (
             <div className="bg-white rounded-3xl p-8 text-center space-y-3 border border-slate-200">
               <span className="text-5xl">📦</span>
               <h4 className="text-xl font-bold text-slate-800">Chưa có mã đóng gói nào</h4>
               <p className="text-sm text-slate-500">
-                Bác hãy bấm nút "Tạo mã mới" để đóng gói lô thu hoạch nhé.
+                {canCreate
+                  ? 'Bác hãy bấm nút "Tạo mã mới" để đóng gói lô thu hoạch nhé.'
+                  : 'Chưa có lô đóng gói nào trong phạm vi được xem.'}
               </p>
             </div>
           ) : (
-            packages.map((pkg) => {
+            visiblePackages.map((pkg) => {
               const hasProc = pkg.processingSnapshot?.hasProcessing || !!pkg.processingLotId;
               return (
                 <div

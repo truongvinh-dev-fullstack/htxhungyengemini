@@ -1,15 +1,21 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
+import { canAccessScreen } from '../../utils/permissions';
 
 export const HomePage: React.FC = () => {
   const {
     currentUser,
     currentHTX,
     currentRole,
+    currentCoopConfig,
     navigateTo,
     todayHasDiary,
+    notifications,
+    getMobileQuickSummary,
   } = useApp();
+
+  const quickSummary = getMobileQuickSummary();
 
   const getRoleBadge = () => {
     switch (currentRole) {
@@ -30,12 +36,21 @@ export const HomePage: React.FC = () => {
   // Định nghĩa các nút chức năng theo đúng vai trò (Role-Based Action Items)
   const getActionCards = () => {
     switch (currentRole) {
-      case 'R04': // KẾ TOÁN / BÁN HÀNG: Tuyệt đối không có "Vùng sản xuất của tôi", không có "Sổ nhật ký"
+      case 'R04': // KẾ TOÁN / BÁN HÀNG:
         return [
           {
+            id: 'product_stock',
+            title: 'Kho thành phẩm HTX',
+            subtitle: 'Hàng HTX giữ (sở hữu & hộ ký gửi)',
+            icon: '📦',
+            color: 'bg-blue-100 text-blue-900',
+            border: 'hover:border-blue-600',
+            screen: 'product_stock_list',
+          },
+          {
             id: 'inventory',
-            title: 'Quản lý Kho vật tư',
-            subtitle: 'Nhập/xuất/tồn giống, phân, thuốc',
+            title: 'Kho vật tư HTX',
+            subtitle: 'Quản lý nhập/xuất giống, phân, thuốc',
             icon: '🏬',
             color: 'bg-amber-100 text-amber-800',
             border: 'hover:border-amber-600',
@@ -51,6 +66,42 @@ export const HomePage: React.FC = () => {
             screen: 'sales_list',
           },
           {
+            id: 'handover',
+            title: 'Hộp phiếu gửi HTX',
+            subtitle: 'Kiểm nhận mua đứt & ký gửi',
+            icon: '⚖️',
+            color: 'bg-sky-100 text-sky-900',
+            border: 'hover:border-sky-600',
+            screen: 'handover_list',
+          },
+          {
+            id: 'harvest',
+            title: 'Nguồn cung thu hoạch',
+            subtitle: 'Lô HTX tự sản xuất & hàng hộ gửi',
+            icon: '🚜',
+            color: 'bg-orange-100 text-orange-800',
+            border: 'hover:border-orange-600',
+            screen: 'harvest_list',
+          },
+          {
+            id: 'packaging',
+            title: 'Lô đóng gói & QR',
+            subtitle: 'Xem sản phẩm đã đóng gói và tem QR',
+            icon: '🏷️',
+            color: 'bg-indigo-100 text-indigo-800',
+            border: 'hover:border-indigo-600',
+            screen: 'packaging_list',
+          },
+          {
+            id: 'feedbacks',
+            title: 'Đánh giá & Phản hồi',
+            subtitle: 'Ý kiến thương lái & khách mua',
+            icon: '⭐',
+            color: 'bg-emerald-100 text-emerald-800',
+            border: 'hover:border-emerald-600',
+            screen: 'feedback_list',
+          },
+          {
             id: 'finance',
             title: 'Doanh thu & Báo cáo bán',
             subtitle: 'Doanh số, dòng tiền & đối soát',
@@ -59,41 +110,14 @@ export const HomePage: React.FC = () => {
             border: 'hover:border-teal-600',
             screen: 'dashboard',
           },
-          {
-            id: 'packaging',
-            title: 'Kho thành phẩm tem QR',
-            subtitle: 'Sản phẩm đóng gói sẵn sàng xuất',
-            icon: '📦',
-            color: 'bg-blue-100 text-blue-800',
-            border: 'hover:border-blue-600',
-            screen: 'packaging_list',
-          },
-          {
-            id: 'harvest',
-            title: 'Nguồn cung thu hoạch',
-            subtitle: 'Sản lượng nông sản về kho',
-            icon: '🚜',
-            color: 'bg-orange-100 text-orange-800',
-            border: 'hover:border-orange-600',
-            screen: 'harvest_list',
-          },
-          {
-            id: 'trace',
-            title: 'Quét mã xuất kho',
-            subtitle: 'Kiểm tra mã QR tem nhãn',
-            icon: '📷',
-            color: 'bg-red-100 text-red-800',
-            border: 'hover:border-red-600',
-            screen: 'trace_scan',
-          },
         ];
 
-      case 'R03': // CÁN BỘ KỸ THUẬT: Mùa vụ, vùng/thửa, kế hoạch, quy trình, nhật ký, thu hoạch, sơ chế, đóng gói, QR
+      case 'R03': // CÁN BỘ KỸ THUẬT:
         return [
           {
             id: 'farm',
             title: 'Vùng sản xuất & Thửa ruộng',
-            subtitle: 'Bản đồ thửa, diện tích, cây trồng',
+            subtitle: 'Bản đồ thửa, chuồng, lồng nuôi',
             icon: '🗺️',
             color: 'bg-amber-100 text-amber-800',
             border: 'hover:border-amber-600',
@@ -101,7 +125,7 @@ export const HomePage: React.FC = () => {
           },
           {
             id: 'diary',
-            title: 'Giám sát Sổ nhật ký',
+            title: 'Giám sát nhật ký sản xuất',
             subtitle: 'Kiểm tra tuân thủ chuẩn VietGAP',
             icon: '📖',
             color: 'bg-emerald-100 text-emerald-800',
@@ -127,6 +151,15 @@ export const HomePage: React.FC = () => {
             screen: 'packaging_list',
           },
           {
+            id: 'feedbacks',
+            title: 'Chất lượng sau xuất bán',
+            subtitle: 'Theo dõi phản hồi người tiêu dùng',
+            icon: '⭐',
+            color: 'bg-purple-100 text-purple-800',
+            border: 'hover:border-purple-600',
+            screen: 'feedback_list',
+          },
+          {
             id: 'trace',
             title: 'Quét thẩm định QR',
             subtitle: 'Kiểm tra chuỗi truy xuất nguồn gốc',
@@ -137,7 +170,7 @@ export const HomePage: React.FC = () => {
           },
         ];
 
-      case 'R02': // BAN QUẢN TRỊ HTX: Dashboard, thành viên, mùa vụ, giám sát sản xuất, báo cáo
+      case 'R02': // BAN QUẢN TRỊ HTX:
         return [
           {
             id: 'dashboard',
@@ -147,6 +180,42 @@ export const HomePage: React.FC = () => {
             color: 'bg-teal-100 text-teal-800',
             border: 'hover:border-teal-600',
             screen: 'dashboard',
+          },
+          {
+            id: 'product_stock',
+            title: 'Kho thành phẩm HTX',
+            subtitle: 'Hàng HTX giữ (sở hữu & hộ ký gửi)',
+            icon: '📦',
+            color: 'bg-blue-100 text-blue-900',
+            border: 'hover:border-blue-600',
+            screen: 'product_stock_list',
+          },
+          {
+            id: 'inventory',
+            title: 'Kho vật tư HTX',
+            subtitle: 'Quản lý giống, phân bón, thuốc BVTV',
+            icon: '🏬',
+            color: 'bg-amber-100 text-amber-800',
+            border: 'hover:border-amber-600',
+            screen: 'inventory_list',
+          },
+          {
+            id: 'handover',
+            title: 'Hộp phiếu gửi HTX',
+            subtitle: 'Kiểm nhận mua đứt & ký gửi xã viên',
+            icon: '⚖️',
+            color: 'bg-sky-100 text-sky-900',
+            border: 'hover:border-sky-600',
+            screen: 'handover_list',
+          },
+          {
+            id: 'diary',
+            title: 'Nhật ký sản xuất',
+            subtitle: 'Xem ghi chép của các vụ/lứa trong HTX',
+            icon: '📖',
+            color: 'bg-emerald-100 text-emerald-800',
+            border: 'hover:border-emerald-600',
+            screen: 'diary_list',
           },
           {
             id: 'members',
@@ -160,20 +229,11 @@ export const HomePage: React.FC = () => {
           {
             id: 'farm',
             title: 'Tổng thể Vùng sản xuất',
-            subtitle: 'Quy mô diện tích & phân bổ giống',
+            subtitle: 'Quy mô diện tích, chuồng trại, lồng cá',
             icon: '🌾',
             color: 'bg-amber-100 text-amber-800',
             border: 'hover:border-amber-600',
             screen: 'farm_list',
-          },
-          {
-            id: 'diary',
-            title: 'Giám sát Thực hiện Quy trình',
-            subtitle: 'Theo dõi nhật ký & VietGAP toàn HTX',
-            icon: '📖',
-            color: 'bg-emerald-100 text-emerald-800',
-            border: 'hover:border-emerald-600',
-            screen: 'diary_list',
           },
           {
             id: 'sales',
@@ -183,6 +243,15 @@ export const HomePage: React.FC = () => {
             color: 'bg-purple-100 text-purple-800',
             border: 'hover:border-purple-600',
             screen: 'sales_list',
+          },
+          {
+            id: 'feedbacks',
+            title: 'Ý kiến Khách & Đối tác',
+            subtitle: 'Đánh giá chất lượng sau bán hàng',
+            icon: '⭐',
+            color: 'bg-indigo-100 text-indigo-800',
+            border: 'hover:border-indigo-600',
+            screen: 'feedback_list',
           },
           {
             id: 'packaging',
@@ -195,23 +264,23 @@ export const HomePage: React.FC = () => {
           },
         ];
 
-      case 'R06': // HỘ NÔNG DÂN: Việc hôm nay, thửa/chuồng/ao của mình, nhật ký, thu hoạch, bán nông sản, đóng gói, vật tư được cấp, thông báo
+      case 'R06': // HỘ NÔNG DÂN:
       default:
         return [
           {
             id: 'diary',
-            title: 'Sổ nhật ký đồng ruộng',
-            subtitle: 'Ghi chép công việc mỗi ngày',
+            title: 'Nhật ký sản xuất',
+            subtitle: 'Ghi việc đã làm, xem gợi ý từ vụ/lứa',
             icon: '📖',
-            color: 'bg-emerald-100 text-emerald-800',
+            color: 'bg-emerald-100 text-emerald-900',
             border: 'hover:border-emerald-600',
             screen: 'diary_list',
           },
           {
             id: 'farm',
-            title: 'Vùng sản xuất của tôi',
-            subtitle: 'Thửa ruộng, chuồng trại, ao của tôi',
-            icon: '🌾',
+            title: 'Nơi sản xuất của tôi',
+            subtitle: 'Thửa ruộng, vườn cây, chuồng trại, ao lồng',
+            icon: '🏡',
             color: 'bg-amber-100 text-amber-800',
             border: 'hover:border-amber-600',
             screen: 'farm_list',
@@ -219,38 +288,65 @@ export const HomePage: React.FC = () => {
           {
             id: 'harvest',
             title: 'Khai báo thu hoạch',
-            subtitle: 'Ghi sản lượng lúa, gà, nhãn của tôi',
+            subtitle: 'Ghi sản lượng lúa, gà, nhãn, cá',
             icon: '🚜',
             color: 'bg-orange-100 text-orange-800',
             border: 'hover:border-orange-600',
             screen: 'harvest_list',
           },
           {
+            id: 'handover',
+            title: 'Phiếu giao HTX của tôi',
+            subtitle: 'Xem phiếu đang chờ và lượng HTX đã nhận',
+            icon: '🚚',
+            color: 'bg-sky-100 text-sky-900',
+            border: 'hover:border-sky-600',
+            screen: 'handover_list',
+          },
+          {
+            id: 'product_stock',
+            title: 'Tồn sản phẩm của tôi',
+            subtitle: 'Nông sản tại hộ & Hàng ký gửi tại HTX',
+            icon: '📦',
+            color: 'bg-blue-100 text-blue-900',
+            border: 'hover:border-blue-600',
+            screen: 'product_stock_list',
+          },
+          {
             id: 'sales',
             title: 'Bán nông sản của hộ',
-            subtitle: 'Tạo đơn bán cho thương lái, khách lẻ',
+            subtitle: 'Tạo đơn bán thương lái, khách lẻ',
             icon: '🛒',
             color: 'bg-purple-100 text-purple-800',
             border: 'hover:border-purple-600',
             screen: 'sales_list',
           },
           {
+            id: 'inventory',
+            title: 'Vật tư HTX đã cấp',
+            subtitle: 'Xem giống, phân bón HTX cấp cho hộ',
+            icon: '🏬',
+            color: 'bg-emerald-100 text-emerald-900',
+            border: 'hover:border-emerald-600',
+            screen: 'inventory_list',
+          },
+          {
             id: 'packaging',
             title: 'Đóng gói & Tem QR',
             subtitle: 'Dán tem QR truy xuất nông sản',
-            icon: '📦',
+            icon: '🏷️',
             color: 'bg-indigo-100 text-indigo-800',
             border: 'hover:border-indigo-600',
             screen: 'packaging_list',
           },
           {
-            id: 'inventory',
-            title: 'Vật tư được cấp phát',
-            subtitle: 'Xem giống, phân bón HTX cấp',
-            icon: '🏬',
-            color: 'bg-blue-100 text-blue-800',
-            border: 'hover:border-blue-600',
-            screen: 'inventory_list',
+            id: 'feedbacks',
+            title: 'Phản hồi từ người mua',
+            subtitle: 'Xem đánh giá của thương lái, khách lẻ',
+            icon: '⭐',
+            color: 'bg-amber-100 text-amber-800',
+            border: 'hover:border-amber-600',
+            screen: 'feedback_list',
           },
           {
             id: 'trace',
@@ -274,7 +370,7 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  const actionCards = getActionCards();
+  const actionCards = getActionCards().filter((card) => canAccessScreen(currentRole, card.screen));
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
@@ -320,13 +416,68 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Mobile Quick Summary Widget (Dữ liệu giao dịch thật) */}
+        <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base font-black text-slate-800">📊 Tóm tắt hiện trường</span>
+              <span className="text-[11px] px-2 py-0.5 bg-emerald-100 text-emerald-800 font-extrabold rounded-full">
+                Thời gian thực
+              </span>
+            </div>
+            <span className="text-xs text-slate-500 font-semibold">{currentHTX.shortName}</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            {currentRole === 'R06' && <button type="button" onClick={() => navigateTo('notifications')} className="p-2.5 bg-amber-50 border border-amber-200 rounded-2xl text-center">
+              <div className="text-lg font-black text-amber-800">{notifications.filter((notice) => notice.reminderTaskId && !notice.isRead).length}</div>
+              <div className="text-[11px] text-slate-600 font-bold mt-0.5">Nhắc ghi</div>
+            </button>}
+
+            {canAccessScreen(currentRole, 'diary_list') && <button type="button" onClick={() => navigateTo('diary_list')} className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
+              <div className="text-lg font-black text-emerald-800">{todayHasDiary ? '✓' : '—'}</div>
+              <div className="text-[11px] text-slate-600 font-bold mt-0.5">Nhật ký hôm nay</div>
+            </button>}
+
+            {canAccessScreen(currentRole, 'handover_list') && (
+              <button type="button"
+                onClick={() => navigateTo('handover_list', { status: 'cho_kiem_nhan' })}
+                className="p-2.5 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 active:scale-95 transition-all"
+              >
+                <div className="text-lg font-black text-amber-700">{quickSummary.pendingHandoversCount}</div>
+                <div className="text-[10px] text-slate-500 font-bold mt-0.5 leading-tight">Chờ nhận</div>
+              </button>
+            )}
+
+            <button type="button"
+              onClick={() => navigateTo('sales_list')}
+              className="p-2.5 bg-slate-50 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 active:scale-95 transition-all"
+            >
+              <div className="text-lg font-black text-purple-700">{quickSummary.pendingDeliveryOrdersCount}</div>
+              <div className="text-[10px] text-slate-500 font-bold mt-0.5 leading-tight">Chờ giao</div>
+            </button>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 font-medium">
+            <span>Sản lượng thực tế / Dự kiến:</span>
+            <span className="font-extrabold text-slate-900">
+              {quickSummary.totalActualYield.toLocaleString('vi-VN')} / {quickSummary.totalEstimatedYield.toLocaleString('vi-VN')} {quickSummary.yieldUnit}
+              {quickSummary.yieldUnit === 'kg' && quickSummary.totalEstimatedYield >= 1000 && (
+                <span className="text-[11px] font-semibold text-slate-500 ml-1">
+                  ({(quickSummary.totalActualYield / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} / {(quickSummary.totalEstimatedYield / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tấn)
+                </span>
+              )}
+            </span>
+          </div>
+        </div>
+
         {/* Action Banner Theo Đúng Từng Vai Trò */}
         {currentRole === 'R06' && !todayHasDiary && (
-          <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-3xl p-4 shadow-lg flex items-center justify-between gap-3 animate-pulse">
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-3xl p-4 shadow-lg flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="text-3xl">⚠️</span>
               <div>
-                <h3 className="text-lg font-extrabold leading-snug">Hôm nay bác chưa ghi nhật ký!</h3>
+                <h3 className="text-lg font-extrabold leading-snug">Ghi lại việc bác đã làm</h3>
                 <p className="text-xs text-amber-100 font-medium mt-0.5">
                   Ghi nhanh chỉ 4 bước để đảm bảo nguồn gốc sản phẩm
                 </p>

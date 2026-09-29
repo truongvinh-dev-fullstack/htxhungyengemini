@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { UserRole, HTXId } from '../types';
 
 export const RoleHTXSwitcher: React.FC = () => {
-  const { currentRole, setRole, currentHTX, setHTX, isLoggedIn } = useApp();
+  const { currentRole, setRole, currentHTX, setHTX, isLoggedIn, demoWarning, demoNotice, resetDemoData } = useApp();
   const [isOpen, setIsOpen] = useState(false);
 
   if (!isLoggedIn) return null;
@@ -48,6 +48,8 @@ export const RoleHTXSwitcher: React.FC = () => {
 
       {isOpen && (
         <div className="mt-2.5 pt-2 border-t border-amber-200 space-y-2.5">
+          {demoWarning && <p className="rounded-xl bg-rose-50 border border-rose-300 p-3 text-rose-900 font-bold">{demoWarning}</p>}
+          {demoNotice && <p className="rounded-xl bg-sky-50 border border-sky-300 p-3 text-sky-900 font-semibold">{demoNotice}</p>}
           <div>
             <div className="text-amber-900 font-semibold mb-1">1. Chọn vai trò trải nghiệm:</div>
             <div className="grid grid-cols-2 gap-1.5">
@@ -92,6 +94,11 @@ export const RoleHTXSwitcher: React.FC = () => {
                 </button>
               ))}
             </div>
+          </div>
+          <div className="border-t border-amber-300 pt-3">
+            <button type="button" onClick={() => {
+              if (window.confirm('Khôi phục dữ liệu demo sạch? Dữ liệu đã tạo trong trình duyệt này sẽ bị xóa.')) resetDemoData();
+            }} className="w-full rounded-xl border-2 border-rose-300 bg-white p-3 text-rose-800 font-extrabold">Khôi phục dữ liệu demo</button>
           </div>
         </div>
       )}

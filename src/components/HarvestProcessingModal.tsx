@@ -43,26 +43,27 @@ export const HarvestProcessingModal: React.FC<Props> = ({
   );
 
   // Reset form when modal opens or harvestLot changes
+  const availableInputQuantity = harvestLot.allocation?.remainingAvailable ?? harvestLot.yieldQuantity;
+
   useEffect(() => {
     if (isOpen) {
-      setDate(harvestLot.processingInfo?.date || new Date().toISOString().split('T')[0]);
+      const avail = harvestLot.allocation?.remainingAvailable ?? harvestLot.yieldQuantity;
+      setDate(new Date().toISOString().split('T')[0]);
       setMethod(
-        harvestLot.processingInfo?.method ||
-          (harvestLot.unit === 'con'
-            ? 'Kiểm dịch thú y & Làm sạch hút chân không'
-            : 'Xay xát tách trấu & sàng lọc phân loại')
+        harvestLot.unit === 'con'
+          ? 'Kiểm dịch thú y & Làm sạch hút chân không'
+          : harvestLot.variety?.toLowerCase().includes('lúa') || harvestLot.farmZoneName?.toLowerCase().includes('lúa')
+          ? 'Xay xát tách trấu & sàng lọc phân loại gạo'
+          : 'Sàng lọc phân loại & sấy nhiệt dẻo'
       );
-      setInputQuantity(
-        harvestLot.processingInfo?.inputQuantity || harvestLot.yieldQuantity
-      );
+      setInputQuantity(avail > 0 ? avail : harvestLot.yieldQuantity);
       setOutputQuantity(
-        harvestLot.processingInfo?.outputQuantity ||
-          (harvestLot.unit === 'con'
-            ? Math.round(harvestLot.yieldQuantity * 0.92)
-            : Math.round(harvestLot.yieldQuantity * 0.68))
+        harvestLot.unit === 'con'
+          ? Math.round((avail > 0 ? avail : harvestLot.yieldQuantity) * 0.92)
+          : Math.round((avail > 0 ? avail : harvestLot.yieldQuantity) * 0.9)
       );
-      setNotes(harvestLot.processingInfo?.notes || '');
-      setOperatorName(harvestLot.processingInfo?.operatorName || currentUser.name);
+      setNotes('');
+      setOperatorName(currentUser.name);
     }
   }, [isOpen, harvestLot, currentUser.name]);
 
@@ -75,7 +76,7 @@ export const HarvestProcessingModal: React.FC<Props> = ({
   const recoveryRatePercent =
     inputQuantity > 0 ? Number(((outputQuantity / inputQuantity) * 100).toFixed(2)) : 0;
 
-  const isInputExceeded = inputQuantity > harvestLot.yieldQuantity;
+  const isInputExceeded = inputQuantity > availableInputQuantity + 0.001;
   const isOutputExceeded = outputQuantity > inputQuantity;
   const isOutputInvalid = outputQuantity <= 0 || inputQuantity <= 0;
 
@@ -207,7 +208,7 @@ export const HarvestProcessingModal: React.FC<Props> = ({
               <input
                 type="number"
                 min="1"
-                max={harvestLot.yieldQuantity}
+                max={availableInputQuantity}
                 value={inputQuantity}
                 onChange={(e) => setInputQuantity(Number(e.target.value) || 0)}
                 className={`w-full h-12 px-3 rounded-xl border-2 font-extrabold text-base bg-white focus:outline-none ${
@@ -215,7 +216,7 @@ export const HarvestProcessingModal: React.FC<Props> = ({
                 }`}
               />
               <span className="text-[11px] text-slate-500 mt-0.5 block">
-                Tối đa: {harvestLot.yieldQuantity.toLocaleString()} {harvestLot.unit}
+                Tồn khả dụng: {availableInputQuantity.toLocaleString()} {harvestLot.unit}
               </span>
             </div>
 

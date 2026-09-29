@@ -4,6 +4,7 @@ import { Header } from '../../components/Header';
 import { getCurrentWeatherSuggestion } from '../../services/currentWeather';
 import { diaryWorkTypes } from './workTypes';
 import { matchSeasonForZone } from '../../utils/seasonMatcher';
+import { getDiaryTaskHints, inferDiaryWorkType } from '../../utils/productionTaskHints';
 
 const localDateTime = (date: Date): string => {
   const offset = date.getTimezoneOffset() * 60000;
@@ -11,7 +12,7 @@ const localDateTime = (date: Date): string => {
 };
 
 export const DiaryAddWizard: React.FC = () => {
-  const { farmZones, inventory, addDiary, navigateTo, currentHTX, currentRole, currentUser, screenParams } = useApp();
+  const { farmZones, inventory, tasks, addDiary, navigateTo, currentHTX, currentRole, currentUser, screenParams } = useApp();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
@@ -50,22 +51,59 @@ export const DiaryAddWizard: React.FC = () => {
 
   // Step 2: Chọn nhiều loại công việc bằng icon lớn & vật tư
   const workTypes = diaryWorkTypes;
-  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
-  const [workDescription, setWorkDescription] = useState('');
+
+  // Khởi tạo công việc từ kế hoạch nếu có
+  const getInitialWorkTypes = (): string[] => {
+    if (screenParams?.workType && diaryWorkTypes.some((w) => w.id === screenParams.workType)) {
+      return [screenParams.workType];
+    }
+    if (!screenParams?.taskTitle) return [];
+    return [inferDiaryWorkType({ title: screenParams.taskTitle, taskCategory: 'phat_sinh' })!];
+  };
+
+  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>(() => {
+    return screenParams?.taskId ? getInitialWorkTypes() : [];
+  });
+  const [selectedHintTaskId, setSelectedHintTaskId] = useState<string>(screenParams?.taskId || '');
+  const [workDescription, setWorkDescription] = useState<string>(() => tasks.find((task) => task.id === screenParams?.taskId)?.description || screenParams?.taskTitle || '');
   const [materialId, setMaterialId] = useState('');
   const [materialQuantity, setMaterialQuantity] = useState('');
   const [phiDays, setPhiDays] = useState('');
   const diaryMaterials = inventory.filter((item) => item.category !== 'BaoBi');
   const selectedMaterial = diaryMaterials.find((item) => item.id === materialId);
   const selectedZone = availableZones.find((zone) => zone.id === selectedZoneId);
+  const [selectedCycleId, setSelectedCycleId] = useState<string>(screenParams?.cycleId || screenParams?.seasonId || '');
+  const rawSeasonMatch = React.useMemo(() => matchSeasonForZone(selectedZone, performedAt), [selectedZone, performedAt]);
+  const effectiveCycleId = selectedCycleId || (rawSeasonMatch.status === 'matched' ? rawSeasonMatch.season?.cycleId || rawSeasonMatch.season?.seasonId : '');
   const seasonMatch = React.useMemo(() => {
-    return matchSeasonForZone(selectedZone, performedAt);
-  }, [selectedZone, performedAt]);
+    return matchSeasonForZone(selectedZone, performedAt, false, effectiveCycleId || undefined);
+  }, [selectedZone, performedAt, effectiveCycleId]);
+  const allTaskHints = React.useMemo(() => getDiaryTaskHints(
+    tasks, selectedZone, seasonMatch.season?.cycleId || seasonMatch.season?.seasonId, performedAt, currentUser
+  ), [tasks, selectedZone, seasonMatch.season, performedAt, currentUser]);
+  const selectedHint = allTaskHints.find((task) => task.id === selectedHintTaskId);
+  const taskHints = selectedHint
+    ? [selectedHint, ...allTaskHints.filter((task) => task.id !== selectedHint.id)].slice(0, 3)
+    : allTaskHints.slice(0, 3);
+
+  const useTaskHint = (taskId: string) => {
+    if (selectedHintTaskId === taskId) {
+      setSelectedHintTaskId('');
+      return;
+    }
+    const task = taskHints.find((item) => item.id === taskId);
+    if (!task) return;
+    setSelectedHintTaskId(task.id);
+    const workType = inferDiaryWorkType(task);
+    if (workType) setSelectedWorkTypes([workType]);
+    setWorkDescription(task.description || task.title);
+  };
 
   const toggleWorkType = (id: string) => {
     if (selectedWorkTypes.includes(id)) {
       if (selectedWorkTypes.length > 1) {
         setSelectedWorkTypes(selectedWorkTypes.filter((t) => t !== id));
+        if (selectedHint && inferDiaryWorkType(selectedHint) === id) setSelectedHintTaskId('');
       } else {
         alert('Bác cần chọn ít nhất 1 công việc nhé!');
       }
@@ -78,7 +116,11 @@ export const DiaryAddWizard: React.FC = () => {
   const [capturedPhoto, setCapturedPhoto] = useState<string>('');
 
   // Step 4: Ghi chú ngắn & xác nhận
-  const [notes, setNotes] = useState<string>('');
+  const [notes, setNotes] = useState<string>(() => {
+    if (screenParams?.defaultNotes) return screenParams.defaultNotes;
+    if (screenParams?.taskTitle) return `Kết quả thực hiện: ${screenParams.taskTitle}`;
+    return '';
+  });
   const [weatherCondition, setWeatherCondition] = useState('');
   const [weatherSuggestedAt, setWeatherSuggestedAt] = useState<string | undefined>();
   const [weatherStatus, setWeatherStatus] = useState('');
@@ -200,14 +242,15 @@ export const DiaryAddWizard: React.FC = () => {
       farmZoneId: zone.id,
       farmZoneName: zone.name,
       seasonId: seasonMatch.season.seasonId,
+      cycleId: seasonMatch.season.cycleId || seasonMatch.season.seasonId,
       seasonName: seasonMatch.season.seasonName,
       date: performedAt.slice(0, 10),
       performedAt,
       workType: selectedWorkTypes[0],
       workTypes: selectedWorkTypes,
-      workTypeName: combinedName || 'Công việc đồng ruộng',
+      workTypeName: combinedName || screenParams?.taskTitle || 'Công việc sản xuất',
       workTypeIcon: combinedIcon || '🌾',
-      workDescription: workDescription.trim() || undefined,
+      workDescription: workDescription.trim() || screenParams?.taskTitle || undefined,
       materialId: selectedMaterial?.id,
       materialQuantity: selectedMaterial ? Number(materialQuantity) : undefined,
       materialUnit: selectedMaterial?.unit,
@@ -219,13 +262,15 @@ export const DiaryAddWizard: React.FC = () => {
       subjectOwnerName: zone.ownerName,
       photoUrl: capturedPhoto,
       notes: notes.trim(),
+      taskId: selectedHint?.id,
+      taskTitle: selectedHint?.title,
+      isIncident: Boolean(screenParams?.isIncident),
     });
 
     if (!result.success) {
       alert(result.message || 'Không lưu được nhật ký.');
       return;
     }
-
 
     navigateTo('diary_list');
   };
@@ -258,17 +303,47 @@ export const DiaryAddWizard: React.FC = () => {
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
-        title="Ghi nhật ký mới"
+        title="Ghi nhật ký sản xuất"
         voiceText={`Bác đang ở bước ${step} trên 4 bước ghi nhật ký.`}
       />
 
       <div className="p-4 space-y-4">
+        {/* Banner thông tin công việc kế hoạch nếu có */}
+        {selectedHint && (
+          <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-3.5 flex items-start gap-3 shadow-xs">
+            <span className="text-2xl">📋</span>
+            <div className="space-y-0.5 min-w-0">
+              <span className="text-xs font-black text-emerald-950 block truncate">
+                Gợi ý từ vụ/lứa: {selectedHint.title}
+              </span>
+              <p className="text-[11px] text-emerald-800 leading-tight">
+                Bác ghi lại việc thực tế đã làm. Có thể bỏ gợi ý ở bước chọn việc.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Banner việc phát sinh nếu có */}
+        {screenParams?.isIncident && (
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-3.5 flex items-start gap-3 shadow-xs">
+            <span className="text-2xl">⚡</span>
+            <div className="space-y-0.5 min-w-0">
+              <span className="text-xs font-black text-amber-950 block">
+                Ghi việc phát sinh ngoài kế hoạch
+              </span>
+              <p className="text-[11px] text-amber-800 leading-tight">
+                Ghi chép công việc đột xuất chưa có trong lịch giao của HTX.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Progress Bar & Step Indicator */}
         <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-sm font-bold">
             <span className="text-emerald-800">
               BƯỚC {step} / 4:{' '}
-              {step === 1 && 'Chọn ngày & Vùng trồng'}
+                {step === 1 && 'Chọn ngày & Nơi sản xuất'}
               {step === 2 && 'Chọn các công việc đã làm'}
               {step === 3 && 'Chụp ảnh thực tế'}
               {step === 4 && 'Ghi chú & Xác nhận'}
@@ -350,7 +425,7 @@ export const DiaryAddWizard: React.FC = () => {
                 >
                   {availableZones.map((z) => (
                     <option key={z.id} value={z.id}>
-                      [{z.zoneCode || 'MSVT'}] {z.name} ({z.variety}) — {z.ownerName}
+                      [{z.zoneCode || 'MSVT'}] {z.name} — {z.ownerName}
                     </option>
                   ))}
                 </select>
@@ -361,6 +436,8 @@ export const DiaryAddWizard: React.FC = () => {
                   {currentRole === 'R03' && <span className="block text-xs mt-1">Bạn đang ghi hộ cho thành viên này. Nhật ký sẽ ghi rõ người ghi là cán bộ kỹ thuật.</span>}
                 </div>
               )}
+
+              {(rawSeasonMatch.status === 'overlap' || rawSeasonMatch.status === 'matched') && <label className="block text-sm font-bold mt-3">Vụ/lứa áp dụng<select className="w-full p-3 border rounded-xl mt-1" value={effectiveCycleId} onChange={(e) => setSelectedCycleId(e.target.value)}><option value="">Chọn vụ/lứa</option>{(rawSeasonMatch.seasons || (rawSeasonMatch.season ? [rawSeasonMatch.season] : [])).map((cycle) => <option key={cycle.cycleId || cycle.seasonId} value={cycle.cycleId || cycle.seasonId}>{cycle.seasonName} ({cycle.year})</option>)}</select></label>}
 
               {/* CN-3.1: THẺ THÔNG TIN MÙA VỤ XÁC ĐỊNH THEO THỬA VÀ THỜI ĐIỂM THỰC HIỆN */}
               {selectedZone && (
@@ -391,7 +468,7 @@ export const DiaryAddWizard: React.FC = () => {
                           📅 Thời gian vụ: <strong>{seasonMatch.season.seasonStartDate}</strong> {seasonMatch.season.seasonStartTime ? `(${seasonMatch.season.seasonStartTime})` : ''} ➜ <strong>{seasonMatch.season.seasonEndDate}</strong> {seasonMatch.season.seasonEndTime ? `(${seasonMatch.season.seasonEndTime})` : ''}
                         </div>
                         <div className="text-xs text-slate-600 font-medium mt-0.5">
-                          🌱 Giống cây/con vụ đó: <strong className="text-slate-900">{seasonMatch.season.variety || selectedZone.variety}</strong>
+                          🌱 Giống cây/con vụ đó: <strong className="text-slate-900">{seasonMatch.season.variety || 'Chưa cập nhật'}</strong>
                         </div>
                       </div>
                     </div>
@@ -401,10 +478,13 @@ export const DiaryAddWizard: React.FC = () => {
                     <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-400 text-sm text-amber-950 space-y-1.5 shadow-sm">
                       <div className="font-extrabold flex items-center gap-1.5 text-amber-900 text-sm">
                         <span className="text-lg">⚠️</span>
-                        <span>Thời điểm này chưa thuộc mùa vụ nào của thửa</span>
+                        <span>Không thể ghi nhật ký</span>
                       </div>
-                      <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                        Thời điểm thực hiện ({performedAt.replace('T', ' ')}) không nằm trong bất kỳ khoảng thời gian mùa vụ nào của thửa <strong>{selectedZone.name}</strong>. Bác vui lòng chọn lại ngày/giờ hoặc liên hệ cán bộ kỹ thuật HTX để cập nhật mùa vụ.
+                      <p className="text-xs text-amber-800 leading-relaxed font-semibold">
+                        {seasonMatch.message || `Thời điểm thực hiện (${performedAt.replace('T', ' ')}) không thuộc vụ/lứa nào đang thực hiện của ${selectedZone.name}.`}
+                      </p>
+                      <p className="text-[11px] text-amber-700 font-medium">
+                        Vui lòng kiểm tra lại ngày giờ hoặc liên hệ cán bộ kỹ thuật HTX để lập/bắt đầu vụ/lứa sản xuất.
                       </p>
                     </div>
                   )}
@@ -442,6 +522,15 @@ export const DiaryAddWizard: React.FC = () => {
         {/* STEP 2: CHỌN NHIỀU LOẠI CÔNG VIỆC CÙNG LÚC */}
         {step === 2 && (
           <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-4">
+            {taskHints.length > 0 && <div className="rounded-2xl bg-amber-50 border border-amber-300 p-3 space-y-2">
+              <h3 className="text-base font-extrabold text-amber-950">Gợi ý từ {seasonMatch.season?.seasonName}</h3>
+              <p className="text-xs text-amber-900">Nếu bác đã làm việc này, chạm để điền nhanh. Bác vẫn có thể chọn việc khác bên dưới.</p>
+              {taskHints.map((task) => <button key={task.id} type="button" onClick={() => useTaskHint(task.id)} className={`w-full text-left rounded-xl border-2 p-3 ${selectedHintTaskId === task.id ? 'bg-emerald-100 border-emerald-600' : 'bg-white border-amber-200'}`}>
+                <span className="block text-sm font-bold text-slate-900">{task.title}</span>
+                <span className="block text-xs text-slate-600 mt-1">Dự kiến: {task.dueDate} • {task.farmZoneName}</span>
+                <span className="block text-xs font-bold text-emerald-700 mt-1">{selectedHintTaskId === task.id ? '✓ Đang dùng gợi ý — chạm lại để bỏ' : 'Chạm để dùng gợi ý'}</span>
+              </button>)}
+            </div>}
             <div>
               <div className="flex items-center justify-between">
                 <label className="block text-lg font-extrabold text-slate-900">
@@ -452,7 +541,7 @@ export const DiaryAddWizard: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                💡 Bác có thể chạm chọn cùng lúc nhiều việc trong buổi ra đồng (ví dụ vừa tưới nước vừa bón phân).
+                  💡 Bác có thể chọn nhiều việc đã làm trong cùng ngày.
               </p>
             </div>
 

@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
-import { isDiaryLocked } from '../../utils/permissions';
+import { canAccessScreen, isDiaryLocked } from '../../utils/permissions';
 
 export const DiaryList: React.FC = () => {
-  const { diaries, farmZones, navigateTo, currentHTX, currentRole, currentUser } = useApp();
+  const { diaries, farmZones, notifications, navigateTo, currentHTX, currentRole, currentUser } = useApp();
 
   const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
   const [onlyMine, setOnlyMine] = useState<boolean>(currentRole === 'R06');
 
   const visibleZones = farmZones.filter((zone) => currentRole !== 'R06' || zone.ownerId === currentUser.id);
+  const taskReminders = notifications.filter((notice) => notice.reminderTaskId && !notice.isRead);
 
   // Hộ xem mọi nhật ký của vùng mình phụ trách, kể cả bản ghi do cán bộ ghi hộ.
   const filteredDiaries = diaries.filter((entry) => {
@@ -33,26 +34,30 @@ export const DiaryList: React.FC = () => {
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
-        title="Sổ nhật ký đồng ruộng"
-        voiceText="Đây là danh sách nhật ký đồng ruộng. Bác có thể lọc theo từng thửa ruộng hoặc bấm nút Ghi nhật ký mới để ghi chép công việc nhé."
+        title="Nhật ký sản xuất"
+        voiceText={canAccessScreen(currentRole, 'diary_add') ? 'Đây là danh sách nhật ký sản xuất. Bác có thể lọc theo từng vùng sản xuất hoặc bấm Ghi mới để ghi chép việc đã làm.' : 'Đây là danh sách nhật ký sản xuất. Bác có thể lọc theo từng vùng sản xuất để xem việc đã ghi.'}
       />
 
       <div className="p-4 space-y-4">
+        {currentRole === 'R06' && taskReminders.length > 0 && <button type="button" onClick={() => navigateTo('notifications')} className="w-full rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 text-left">
+          <span className="block text-base font-extrabold text-amber-950">⏰ {taskReminders.length} nhắc nhở từ vụ/lứa</span>
+          <span className="block text-sm text-amber-900 mt-1">Xem lịch dự kiến. Khi đã làm, bác ghi kết quả vào nhật ký.</span>
+        </button>}
         {/* Top Action Banner */}
         <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-4 flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-extrabold text-emerald-950">Ghi việc hôm nay</h3>
+            <h3 className="text-lg font-extrabold text-emerald-950">{canAccessScreen(currentRole, 'diary_add') ? 'Ghi việc hôm nay' : 'Nhật ký sản xuất'}</h3>
             <p className="text-xs text-emerald-800 font-medium mt-0.5">
-              4 bước đơn giản, có chụp ảnh thực tế
+              {canAccessScreen(currentRole, 'diary_add') ? '4 bước đơn giản, có chụp ảnh thực tế' : 'Xem các việc đã ghi theo vùng và vụ/lứa'}
             </p>
           </div>
-          <button
+          {canAccessScreen(currentRole, 'diary_add') && <button
             onClick={() => navigateTo('diary_add')}
             className="bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white px-4 py-3 rounded-2xl font-extrabold text-base flex items-center gap-2 shadow-md shadow-emerald-700/30 whitespace-nowrap"
           >
             <span className="text-xl">➕</span>
             <span>Ghi mới</span>
-          </button>
+          </button>}
         </div>
 
         {/* CN-3.5.1: Bộ lọc Thửa ruộng & Phạm vi hiển thị */}
@@ -69,7 +74,7 @@ export const DiaryList: React.FC = () => {
               <option value="all">Tất cả các thửa ruộng / vùng nuôi</option>
               {visibleZones.map((z) => (
                 <option key={z.id} value={z.id}>
-                  {z.name} ({z.variety})
+                  {z.name}
                 </option>
               ))}
             </select>
@@ -105,7 +110,7 @@ export const DiaryList: React.FC = () => {
         {/* Timeline list */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-lg font-bold text-slate-800">Lịch sử công việc</h3>
+            <h3 className="text-lg font-bold text-slate-800">Nhật ký đã ghi</h3>
             <span className="text-xs text-slate-500 font-semibold">{filteredDiaries.length} bản ghi</span>
           </div>
 

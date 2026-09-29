@@ -2,151 +2,228 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 import { CounterInput } from '../../components/CounterInput';
-import { canManageProcessing, canManagePackaging } from '../../utils/permissions';
-import { HarvestProcessingModal } from '../../components/HarvestProcessingModal';
+import { canManagePackaging } from '../../utils/permissions';
+import { getProductStateBadge, getStockItemAvailableQuantity } from '../../utils/harvestBalance';
 
 export const PackagingAdd: React.FC = () => {
-  const { harvests, packages, addPackage, saveHarvestProcessing, navigateTo, currentHTX, screenParams, currentRole } = useApp();
+  const {
+    harvests,
+    productStocks,
+    orders,
+    handovers,
+    processingLots,
+    addPackage,
+    navigateTo,
+    currentHTX,
+    screenParams,
+    currentRole,
+    currentUser,
+  } = useApp();
 
-  const prefilledHarvestId = screenParams?.harvestLotId || screenParams?.harvestLot?.id;
+  const paramStockItemId = screenParams?.stockItemId;
+  const paramHarvestLotId = screenParams?.harvestLotId || screenParams?.harvestLot?.id;
 
-  const [selectedHarvestId, setSelectedHarvestId] = useState<string>(() => {
-    if (prefilledHarvestId && harvests.some((h) => h.id === prefilledHarvestId)) {
-      return prefilledHarvestId;
+  // Danh sách các dòng tồn có thể đóng gói (hàng thô hoặc đã sơ chế còn tồn khả dụng)
+  const eligibleStocks = useMemo(() => {
+    return productStocks.filter((s) => {
+      if (s.htxId !== currentHTX.id) return false;
+      if (s.state !== 'da_xu_ly' && s.state !== 'hang_tho') return false;
+      if (!canManagePackaging(currentRole, s.ownerId, currentUser.id)) return false;
+      const balance = getStockItemAvailableQuantity(s, orders, handovers);
+      return balance.availableQuantity > 0;
+    });
+  }, [productStocks, currentHTX.id, currentRole, currentUser, orders, handovers]);
+
+  // Danh sách lô thu hoạch dự phòng
+  const availableHarvests = useMemo(() => {
+    return harvests.filter((h) => {
+      if (h.htxId !== currentHTX.id) return false;
+      if (currentRole === 'R06') {
+        return h.ownerId === currentUser.id || h.ownerPhone === currentUser.phone;
+      }
+      return true;
+    });
+  }, [harvests, currentHTX.id, currentRole, currentUser]);
+
+  // State chọn dòng tồn nguồn
+  const [selectedStockId, setSelectedStockId] = useState<string>(() => {
+    if (paramStockItemId && productStocks.some((s) => s.id === paramStockItemId)) {
+      return paramStockItemId;
     }
-    return harvests.length > 0 ? harvests[0].id : '';
+    if (paramHarvestLotId) {
+      const match = eligibleStocks.find((s) => s.harvestLotId === paramHarvestLotId);
+      if (match) return match.id;
+    }
+    return eligibleStocks.length > 0 ? eligibleStocks[0].id : '';
   });
 
   useEffect(() => {
-    if (prefilledHarvestId && harvests.some((h) => h.id === prefilledHarvestId)) {
-      setSelectedHarvestId(prefilledHarvestId);
-    } else if (harvests.length > 0 && !selectedHarvestId) {
-      setSelectedHarvestId(harvests[0].id);
+    if (paramStockItemId && productStocks.some((s) => s.id === paramStockItemId)) {
+      setSelectedStockId(paramStockItemId);
+    } else if (paramHarvestLotId) {
+      const match = eligibleStocks.find((s) => s.harvestLotId === paramHarvestLotId);
+      if (match) setSelectedStockId(match.id);
     }
-  }, [harvests, prefilledHarvestId, selectedHarvestId]);
+  }, [paramStockItemId, paramHarvestLotId, productStocks, eligibleStocks]);
 
+  // Dòng tồn nguồn đang được chọn
+  const activeStock = useMemo(() => {
+    return productStocks.find((s) => s.id === selectedStockId);
+  }, [productStocks, selectedStockId]);
+
+  // Lô thu hoạch nguồn gốc tương ứng
   const selectedHarvest = useMemo(() => {
-    return harvests.find((h) => h.id === selectedHarvestId);
-  }, [harvests, selectedHarvestId]);
+    if (activeStock) {
+      return harvests.find((h) => h.id === activeStock.harvestLotId);
+    }
+    if (paramHarvestLotId) {
+      return harvests.find((h) => h.id === paramHarvestLotId);
+    }
+    return availableHarvests.length > 0 ? availableHarvests[0] : undefined;
+  }, [activeStock, harvests, paramHarvestLotId, availableHarvests]);
 
-  const isProcessed = selectedHarvest?.processingStatus === 'da_so_che' && !!selectedHarvest?.processingInfo?.outputQuantity;
-  const isNoProcessing = selectedHarvest?.processingStatus === 'khong_so_che';
+  // Đơn vị và lượng khả dụng của dòng nguồn (KHÔNG dùng allocation của lô nếu là hàng sau sơ chế)
+  const sourceUnit = activeStock ? activeStock.unit : (selectedHarvest?.unit || 'kg');
 
-  // Khối lượng nguồn và đơn vị
-  const totalSourceQuantity = isProcessed
-    ? (selectedHarvest?.processingInfo?.outputQuantity || 0)
-    : (selectedHarvest?.yieldQuantity || 0);
+  const stockBalance = useMemo(() => {
+    if (activeStock) {
+      return getStockItemAvailableQuantity(activeStock, orders, handovers);
+    }
+    return null;
+  }, [activeStock, orders, handovers]);
 
-  const sourceUnit = isProcessed
-    ? (selectedHarvest?.processingInfo?.unit || selectedHarvest?.unit || 'kg')
-    : (selectedHarvest?.unit || 'kg');
+  const availableQuantity = useMemo(() => {
+    if (stockBalance) {
+      return stockBalance.availableQuantity;
+    }
+    if (!selectedHarvest) return 0;
+    return selectedHarvest.allocation?.remainingAvailable ?? selectedHarvest.yieldQuantity ?? 0;
+  }, [stockBalance, selectedHarvest]);
 
-  // Đã đóng gói các đợt trước từ lô này
-  const packagesForLot = useMemo(() => {
-    if (!selectedHarvest) return [];
-    return packages.filter((p) => p.harvestLotId === selectedHarvest.id);
-  }, [packages, selectedHarvest]);
-
-  const alreadyPackaged = useMemo(() => {
-    return packagesForLot.reduce((sum, p) => {
-      const weight = p.netWeightPerPack || (sourceUnit === 'con' ? 1 : 1);
-      return sum + p.packQuantity * weight;
-    }, 0);
-  }, [packagesForLot, sourceUnit]);
-
-  const remainingAvailable = Math.max(0, totalSourceQuantity - alreadyPackaged);
+  // Tùy chọn hàng bán tươi sống
+  const [isLiveProduct, setIsLiveProduct] = useState<boolean>(() => {
+    return sourceUnit === 'con' || selectedHarvest?.variety?.toLowerCase().includes('cá') || false;
+  });
 
   // Form Fields
   const [productName, setProductName] = useState<string>(() => {
-    if (currentHTX.id === 'dongtao') return 'Gà Đông Tảo thuần chủng (Con hút chân không)';
-    if (currentHTX.id === 'quyetthang') return 'Nhãn lồng tiến vua Hương Chi (Hộp 1kg)';
-    return 'Gạo sạch Bắc Thơm An Ninh (Túi 5kg)';
+    if (activeStock) {
+      if (activeStock.state === 'da_xu_ly') return `Gạo sạch ${activeStock.variety}`;
+      return activeStock.variety;
+    }
+    if (currentHTX.id === 'dongtao') return 'Gà Đông Tảo thuần chủng';
+    if (currentHTX.id === 'quyetthang') return 'Nhãn lồng tiến vua Hương Chi';
+    return 'Gạo sạch Bắc Thơm An Ninh';
   });
 
-  // Tự động gợi ý tên sản phẩm khi đổi lô
-  useEffect(() => {
-    if (selectedHarvest) {
-      if (selectedHarvest.unit === 'con') {
-        setProductName(`${selectedHarvest.variety || 'Gà Đông Tảo'} (Con hút chân không)`);
-        setUnit('Con');
-        setNetWeightPerPack(1);
-        setPackagingSpec('Con hút chân không');
-      } else if (currentHTX.id === 'quyetthang') {
-        setProductName(`${selectedHarvest.variety || 'Nhãn lồng Hương Chi'} (Hộp 1kg)`);
-        setUnit('Hộp');
-        setNetWeightPerPack(1);
-        setPackagingSpec('Hộp quà 1kg');
-      } else {
-        setProductName(`Gạo sạch ${selectedHarvest.variety || 'Bắc Thơm'} An Ninh (Túi 5kg)`);
-        setUnit('Túi');
-        setNetWeightPerPack(5);
-        setPackagingSpec('Túi chân không 5kg');
-      }
-    }
-  }, [selectedHarvest, currentHTX.id]);
-
-  const [quantity, setQuantity] = useState<number>(20);
-  const [unit, setUnit] = useState<string>('Túi');
   const [packagingSpec, setPackagingSpec] = useState<string>('Túi chân không 5kg');
   const [netWeightPerPack, setNetWeightPerPack] = useState<number>(5);
+  const [quantity, setQuantity] = useState<number>(10);
+  const [unit, setUnit] = useState<string>('Túi');
   const [standard, setStandard] = useState<string>('VietGAP - OCOP 4 sao');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const [createdDate, setCreatedDate] = useState<string>(todayStr);
 
-  // Hạn sử dụng khuyến nghị không cố định (mặc định +6 tháng cho gạo/nhãn, +1 tháng cho gà)
   const [expiryDate, setExpiryDate] = useState<string>(() => {
     const d = new Date();
-    d.setMonth(d.getMonth() + (currentHTX.id === 'dongtao' ? 1 : 6));
+    d.setMonth(d.getMonth() + 6);
     return d.toISOString().split('T')[0];
   });
 
-  // Modal sơ chế
-  const [isProcessingModalOpen, setIsProcessingModalOpen] = useState(false);
+  // Tự động gợi ý thông số theo loại sản phẩm
+  useEffect(() => {
+    if (activeStock) {
+      const isLive = activeStock.unit === 'con' || activeStock.variety.toLowerCase().includes('cá');
+      setIsLiveProduct(isLive);
 
-  // Tính toán lượng đóng gói dự kiến
-  const weightPerUnit = sourceUnit === 'con' ? 1 : (netWeightPerPack || 1);
-  const totalAttemptedQuantity = quantity * weightPerUnit;
-  const isQuantityExceeded = totalAttemptedQuantity > remainingAvailable + 0.001;
+      if (activeStock.state === 'da_xu_ly') {
+        setProductName(`Gạo sạch ${activeStock.variety}`);
+        setPackagingSpec('Túi chân không 5kg');
+        setNetWeightPerPack(5);
+        setUnit('Túi');
+      } else if (isLive) {
+        setProductName(activeStock.variety);
+        setPackagingSpec(activeStock.unit === 'con' ? 'Vòng chân QR đeo gia cầm' : 'Thùng oxy giao tươi sống');
+        setNetWeightPerPack(1);
+        setUnit(activeStock.unit === 'con' ? 'Con' : 'Kg');
+      } else if (currentHTX.id === 'quyetthang') {
+        setProductName(`Nhãn lồng tươi ${activeStock.variety} (Thùng 10kg)`);
+        setPackagingSpec('Thùng carton đục lỗ 10kg');
+        setNetWeightPerPack(10);
+        setUnit('Thùng');
+      } else {
+        setProductName(activeStock.variety);
+        setPackagingSpec('Bao bì tiêu chuẩn 10kg');
+        setNetWeightPerPack(10);
+        setUnit('Bao');
+      }
+    }
+  }, [activeStock, currentHTX.id]);
 
-  // Validation ngày
+  // Tính toán tổng khối lượng cần dùng
+  const weightPerPack = isLiveProduct && sourceUnit === 'con' ? 1 : (Number(netWeightPerPack) || 1);
+  const totalAttemptedQuantity = quantity * weightPerPack;
+  const isQuantityExceeded = totalAttemptedQuantity > availableQuantity + 0.001;
+
+  // Lấy ngày sơ chế để kiểm tra logic ngày đóng gói
+  const processingDate = useMemo(() => {
+    if (!selectedHarvest) return undefined;
+    const procLot = processingLots.find(
+      (p) => p.id === activeStock?.processingLotId || p.harvestLotId === selectedHarvest.id
+    );
+    return (
+      procLot?.date ||
+      selectedHarvest.processingInfo?.date ||
+      (activeStock?.state === 'da_xu_ly' ? activeStock.updatedAt.slice(0, 10) : undefined)
+    );
+  }, [selectedHarvest, processingLots, activeStock]);
+
+  // Kiểm tra tính hợp lệ của ngày
   const dateError = useMemo(() => {
-    if (!selectedHarvest) return null;
-    if (createdDate < selectedHarvest.date) {
+    if (selectedHarvest && createdDate < selectedHarvest.date) {
       return `Ngày đóng gói (${createdDate}) không được trước ngày thu hoạch (${selectedHarvest.date}).`;
     }
-    if (isProcessed && selectedHarvest.processingInfo?.date && createdDate < selectedHarvest.processingInfo.date) {
-      return `Ngày đóng gói (${createdDate}) không được trước ngày sơ chế (${selectedHarvest.processingInfo.date}).`;
+    if (activeStock?.state === 'da_xu_ly' && processingDate && createdDate < processingDate) {
+      return `Ngày đóng gói (${createdDate}) không được trước ngày sơ chế (${processingDate}).`;
     }
-    if (expiryDate <= createdDate) {
+    if (!isLiveProduct && expiryDate && expiryDate <= createdDate) {
       return 'Hạn sử dụng khuyến nghị phải sau ngày đóng gói.';
     }
     return null;
-  }, [createdDate, expiryDate, selectedHarvest, isProcessed]);
+  }, [createdDate, expiryDate, selectedHarvest, activeStock, processingDate, isLiveProduct]);
 
-  const hasPackagingPerm = canManagePackaging(currentRole);
-  const hasProcessingPerm = canManageProcessing(currentRole);
+  const hasPackagingPerm = canManagePackaging(
+    currentRole,
+    activeStock?.ownerId || selectedHarvest?.ownerId,
+    currentUser.id
+  );
 
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSubmitting) return;
+
     if (!selectedHarvest) {
-      alert('Vui lòng chọn lô thu hoạch.');
+      alert('Vui lòng chọn lô thu hoạch nguồn.');
       return;
     }
 
     if (!hasPackagingPerm) {
-      alert('Chỉ Cán bộ Kỹ thuật (R03) hoặc Ban Quản trị (R02) mới có quyền đóng gói và tạo mã QR.');
+      alert('Bác không có quyền đóng gói hoặc cấp tem QR cho lô hàng này.');
       return;
     }
 
     if (quantity <= 0) {
-      alert('Số lượng thành phẩm phải lớn hơn 0.');
+      alert('Số lượng bao gói phải lớn hơn 0.');
       return;
     }
 
     if (isQuantityExceeded) {
-      alert(`Số lượng đóng gói (${totalAttemptedQuantity.toLocaleString()} ${sourceUnit}) vượt quá sản lượng khả dụng còn lại (${remainingAvailable.toLocaleString()} ${sourceUnit})!`);
+      alert(
+        `Khối lượng cần dùng (${totalAttemptedQuantity.toLocaleString()} ${sourceUnit}) vượt quá lượng khả dụng của dòng tồn (${availableQuantity.toLocaleString()} ${sourceUnit})!`
+      );
       return;
     }
 
@@ -155,385 +232,319 @@ export const PackagingAdd: React.FC = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const createdPkg = addPackage({
         htxId: currentHTX.id,
         harvestLotId: selectedHarvest.id,
         harvestLotCode: selectedHarvest.code,
-        processingLotId: selectedHarvest.processingInfo ? `sc-${selectedHarvest.id}` : undefined,
-        processingLotCode: selectedHarvest.processingInfo ? `SC-${selectedHarvest.code}` : undefined,
+        sourceStockItemId: activeStock?.id,
+        sourceProductState: activeStock ? (activeStock.state === 'da_xu_ly' ? 'da_xu_ly' : 'hang_tho') : 'hang_tho',
         productName,
         packagingSpec,
-        netWeightPerPack: weightPerUnit,
+        netWeightPerPack: weightPerPack,
         netWeightUnit: sourceUnit,
         packQuantity: quantity,
         unit,
+        isLiveProduct,
         createdDate,
-        expiryDate,
+        expiryDate: isLiveProduct ? undefined : expiryDate,
         standard,
+        ownerType: activeStock?.ownerType,
+        ownerId: activeStock?.ownerId,
+        ownerName: activeStock?.ownerName,
+        holderId: activeStock?.holderId,
+        holderName: activeStock?.holderName,
       });
 
       navigateTo('packaging_qr', { pkg: createdPkg });
     } catch (err: any) {
+      setIsSubmitting(false);
       alert(err.message || 'Lỗi khi tạo mã sản phẩm đóng gói.');
     }
   };
 
+  const stateBadge = getProductStateBadge(activeStock?.state);
+
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
-        title="Đóng gói & Tạo mã QR"
-        voiceText="Bác hãy chọn lô thu hoạch cần đóng gói, kiểm tra thông tin sơ chế và khối lượng khả dụng, sau đó bấm tạo tem mã QR nhé."
+        title="Đóng gói & Tạo tem QR"
+        voiceText="Bác hãy kiểm tra dòng nông sản nguồn, định lượng số gói và phát hành tem QR nhé."
       />
 
-      <div className="p-4 space-y-4">
-        <form onSubmit={handleGenerate} className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-4">
-          {/* 1. Chọn Lô thu hoạch duy nhất */}
+      <div className="p-4 space-y-4 max-w-lg mx-auto">
+        <form onSubmit={handleGenerate} className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-5">
+          {/* 1. Chọn Dòng tồn nguồn hoặc Lô thu hoạch */}
           <div className="space-y-2">
-            <label className="block text-base font-bold text-slate-800">
-              1. Chọn Lô thu hoạch nguồn: <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-extrabold text-slate-800">
+                1. Nguồn nông sản đóng gói: <span className="text-red-500">*</span>
+              </label>
+              {activeStock && (
+                <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-black border ${stateBadge.color}`}>
+                  {stateBadge.label}
+                </span>
+              )}
+            </div>
 
-            {harvests.length === 0 ? (
-              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-300 text-xs text-amber-900">
-                Chưa có lô thu hoạch nào trong HTX. Vui lòng ghi nhận lô thu hoạch trước khi đóng gói.
+            {eligibleStocks.length > 0 ? (
+              <select
+                value={selectedStockId}
+                onChange={(e) => setSelectedStockId(e.target.value)}
+                className="w-full h-13 px-3 rounded-2xl border-2 border-emerald-400 text-sm font-bold text-slate-900 bg-emerald-50/50 focus:border-emerald-600 focus:outline-none"
+              >
+                {eligibleStocks.map((s) => {
+                  const sBalance = getStockItemAvailableQuantity(s, orders, handovers);
+                  const badge = getProductStateBadge(s.state);
+                  return (
+                    <option key={s.id} value={s.id}>
+                      [{s.id}] {s.variety} · {badge.shortLabel} (Khả dụng: {sBalance.availableQuantity.toLocaleString()} {s.unit})
+                    </option>
+                  );
+                })}
+              </select>
+            ) : availableHarvests.length > 0 ? (
+              <div className="p-3 bg-amber-50 rounded-2xl border border-amber-300 text-xs text-amber-900 font-semibold">
+                Đang đóng gói trực tiếp từ lô thu hoạch: <strong>{selectedHarvest?.code}</strong>
               </div>
             ) : (
-              <select
-                value={selectedHarvestId}
-                onChange={(e) => setSelectedHarvestId(e.target.value)}
-                className="w-full h-14 px-3 rounded-2xl border-2 border-emerald-300 text-sm font-bold text-slate-900 bg-emerald-50/40 focus:border-emerald-600 focus:outline-none"
-              >
-                {harvests.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    [{h.code}] - {h.farmZoneName} ({h.yieldQuantity} {h.unit}) {h.processingStatus === 'da_so_che' ? '• Đã sơ chế' : h.processingStatus === 'khong_so_che' ? '• Không sơ chế' : '• Chưa sơ chế'}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {/* Thẻ thông tin định danh Lô thu hoạch (Req 5) */}
-            {selectedHarvest && (
-              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5 text-xs text-slate-700">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-bold">Mã lô gắn tem:</span>
-                  <span className="font-mono font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                    {selectedHarvest.code}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-bold">Vùng canh tác & MSVT:</span>
-                  <span className="font-extrabold text-slate-900">
-                    {selectedHarvest.farmZoneName} {selectedHarvest.zoneCode ? `(${selectedHarvest.zoneCode})` : ''}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-bold">Giống cây / sản phẩm:</span>
-                  <span className="font-bold text-slate-900">{selectedHarvest.variety || 'Nông sản HTX'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-bold">Chủ hộ phụ trách:</span>
-                  <span className="font-bold text-slate-900">{selectedHarvest.ownerName || 'Hộ thành viên'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-bold">Ngày thu hoạch:</span>
-                  <span className="font-bold text-slate-900">{selectedHarvest.date}</span>
-                </div>
+              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-300 text-xs text-amber-900 font-semibold">
+                Chưa có dòng tồn hoặc lô thu hoạch nào khả dụng để đóng gói.
               </div>
             )}
+
+            {/* Thẻ định danh dòng tồn nguồn (Yêu cầu 2: Hiển thị đầy đủ thông tin dòng nguồn) */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs text-slate-700">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-semibold">Lô thu hoạch gốc:</span>
+                <span className="font-mono font-extrabold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {selectedHarvest?.code || 'Chưa rõ'}
+                </span>
+              </div>
+
+              {activeStock && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-semibold">Mã dòng tồn nguồn:</span>
+                  <span className="font-mono font-extrabold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    {activeStock.id}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-semibold">Trạng thái nông sản:</span>
+                <span className={`font-black px-2 py-0.5 rounded-full border text-[11px] ${stateBadge.color}`}>
+                  {stateBadge.label}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-semibold">Chủ sở hữu hợp pháp:</span>
+                <strong className="text-slate-900">{activeStock?.ownerName || selectedHarvest?.ownerName || 'Hợp tác xã'}</strong>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-semibold">Bên đang lưu giữ:</span>
+                <strong className="text-slate-900">
+                  {activeStock?.holderName || (activeStock?.ownerType === 'htx' ? currentHTX.name : activeStock?.ownerName) || currentHTX.name}
+                </strong>
+              </div>
+
+              {activeStock?.locationName && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-semibold">Địa điểm kho:</span>
+                  <span className="font-bold text-slate-700">{activeStock.locationName}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                <span className="font-bold text-emerald-800">
+                  {activeStock?.state === 'da_xu_ly'
+                    ? 'Lượng sau sơ chế còn khả dụng:'
+                    : 'Lượng khả dụng để đóng gói:'}
+                </span>
+                <strong className="text-base font-black text-emerald-900">
+                  {availableQuantity.toLocaleString()} {sourceUnit}
+                </strong>
+              </div>
+            </div>
           </div>
 
-          {/* 2. Trạng thái & Toàn bộ thông tin sơ chế đã lưu của lô (Req 5) */}
-          {selectedHarvest && (
-            <div className="p-4 bg-blue-50/60 rounded-2xl border-2 border-blue-200 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-extrabold text-blue-950 text-sm">
-                  <span>⚙️</span>
-                  <span>Thông tin Sơ chế của lô:</span>
-                </div>
-                {isProcessed ? (
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
-                    ✓ Đã sơ chế
-                  </span>
-                ) : isNoProcessing ? (
-                  <span className="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-xs font-bold">
-                    Không sơ chế
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold">
-                    Chưa sơ chế
-                  </span>
-                )}
-              </div>
-
-              {isProcessed && selectedHarvest.processingInfo ? (
-                <div className="space-y-2 text-xs">
-                  <div className="grid grid-cols-2 gap-2 bg-white p-2.5 rounded-xl border border-blue-200">
-                    <div>
-                      <span className="text-slate-500 block">Ngày sơ chế:</span>
-                      <strong className="text-slate-800">{selectedHarvest.processingInfo.date}</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block">Phương pháp:</span>
-                      <strong className="text-slate-800">{selectedHarvest.processingInfo.method}</strong>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="bg-white p-2 rounded-xl border border-blue-200">
-                      <span className="text-[10px] text-slate-500 block">Đầu vào:</span>
-                      <span className="font-extrabold text-slate-900">
-                        {selectedHarvest.processingInfo.inputQuantity.toLocaleString()} {sourceUnit}
-                      </span>
-                    </div>
-                    <div className="bg-white p-2 rounded-xl border border-blue-200">
-                      <span className="text-[10px] text-emerald-700 font-bold block">Đầu ra:</span>
-                      <span className="font-extrabold text-emerald-700">
-                        {selectedHarvest.processingInfo.outputQuantity.toLocaleString()} {sourceUnit}
-                      </span>
-                    </div>
-                    <div className="bg-white p-2 rounded-xl border border-blue-200">
-                      <span className="text-[10px] text-amber-700 font-bold block">Hao hụt:</span>
-                      <span className="font-extrabold text-amber-700">
-                        {selectedHarvest.processingInfo.lossRatePercent}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ) : isNoProcessing ? (
-                <p className="text-xs text-slate-600 font-medium">
-                  Lô này được đánh dấu <strong>Không sơ chế</strong> (đóng gói trực tiếp từ lượng thu hoạch).
-                </p>
-              ) : (
-                <p className="text-xs text-amber-900 font-medium">
-                  Lô này <strong>Chưa sơ chế</strong>. Bác có thể bấm nút bên dưới để ghi nhận sơ chế, hoặc đóng gói trực tiếp.
-                </p>
-              )}
-
-              {/* Nút mở cùng form sơ chế cho người có quyền (Req 5) */}
-              {hasProcessingPerm && (
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsProcessingModalOpen(true)}
-                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5"
-                  >
-                    <span>✏️</span>
-                    <span>{isProcessed ? 'Chỉnh sửa thông tin sơ chế' : 'Ghi nhận sơ chế ngay tại đây'}</span>
-                  </button>
-                  {!isNoProcessing && !isProcessed && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        saveHarvestProcessing(selectedHarvest.id, {
-                          date: todayStr,
-                          method: 'Không sơ chế',
-                          inputQuantity: 0,
-                          outputQuantity: selectedHarvest.yieldQuantity,
-                          status: 'khong_so_che',
-                        });
-                      }}
-                      className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs"
-                    >
-                      Bỏ qua sơ chế
-                    </button>
-                  )}
-                </div>
-              )}
+          {/* 2. Tùy chọn Hàng tươi sống bán trực tiếp */}
+          <div className="p-3.5 bg-sky-50 rounded-2xl border border-sky-200 flex items-center justify-between">
+            <div className="pr-3">
+              <span className="text-xs font-black text-sky-950 block">
+                Nông sản tươi sống bán trực tiếp (Gà sống / Cá sống)
+              </span>
+              <p className="text-[11px] text-sky-800 mt-0.5 leading-snug">
+                Không ép hạn sử dụng kín. Tem QR gắn trực tiếp qua vòng chân hoặc thẻ cá.
+              </p>
             </div>
-          )}
-
-          {/* 3. Khối lượng khả dụng để đóng gói (Req 7) */}
-          {selectedHarvest && (
-            <div className={`p-4 rounded-2xl border-2 space-y-1.5 ${
-              remainingAvailable > 0
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
-                : 'bg-red-50 border-red-300 text-red-950'
-            }`}>
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span>📦 Khối lượng khả dụng để đóng gói:</span>
-                <span className="text-[11px] font-semibold text-slate-600">
-                  {isProcessed ? 'Tính từ sản lượng sau sơ chế' : 'Tính từ sản lượng thu hoạch gốc'}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-black text-emerald-800">
-                  {remainingAvailable.toLocaleString()} {sourceUnit}
-                </span>
-                <span className="text-xs text-slate-600 font-medium">
-                  (Tổng nguồn: {totalSourceQuantity.toLocaleString()} {sourceUnit} • Đã đóng: {alreadyPackaged.toLocaleString()} {sourceUnit})
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* 4. Tên sản phẩm thương mại in trên nhãn (Req 6) */}
-          <div>
-            <label className="block text-base font-bold text-slate-800 mb-1.5">
-              2. Tên sản phẩm in trên nhãn tem: <span className="text-red-500">*</span>
-            </label>
             <input
-              type="text"
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              className="w-full h-14 px-4 rounded-2xl border-2 border-slate-300 text-base font-bold text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
-              required
+              type="checkbox"
+              checked={isLiveProduct}
+              onChange={(e) => setIsLiveProduct(e.target.checked)}
+              className="w-6 h-6 accent-sky-600 rounded-lg cursor-pointer"
             />
           </div>
 
-          {/* 5. Tiêu chuẩn & Quy cách bao bì */}
+          {/* 3. Tên thương phẩm in trên nhãn */}
+          <div>
+            <label className="block text-xs font-bold text-slate-800 mb-1">
+              2. Tên thương phẩm in trên tem QR: <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              className="w-full h-12 px-3 rounded-2xl border-2 border-slate-300 font-bold text-sm text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
+            />
+          </div>
+
+          {/* 4. Quy cách & Khối lượng tịnh mỗi gói (Yêu cầu 3) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Tiêu chuẩn dán nhãn:
-              </label>
-              <select
-                value={standard}
-                onChange={(e) => setStandard(e.target.value)}
-                className="w-full h-12 px-3 rounded-xl border-2 border-slate-300 text-xs font-bold text-slate-800 bg-slate-50"
-              >
-                <option value="VietGAP - OCOP 4 sao">VietGAP - OCOP 4 sao</option>
-                <option value="Hữu cơ vi sinh">Hữu cơ vi sinh</option>
-                <option value="Đặc sản Tiến Vua OCOP 4 sao">Đặc sản Tiến Vua OCOP 4 sao</option>
-                <option value="VietGAP chuẩn Hưng Yên">VietGAP chuẩn Hưng Yên</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Quy cách bao bì:
+                Quy cách bao bì / túi:
               </label>
               <input
                 type="text"
                 value={packagingSpec}
                 onChange={(e) => setPackagingSpec(e.target.value)}
-                placeholder="VD: Túi chân không 5kg, Hộp quà 1kg"
-                className="w-full h-12 px-3 rounded-xl border-2 border-slate-300 text-xs font-bold text-slate-800 bg-slate-50"
+                placeholder="VD: Túi chân không 5kg..."
+                className="w-full h-11 px-3 rounded-xl border border-slate-300 text-xs font-semibold text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Khối lượng tịnh ({sourceUnit}/gói): *
+              </label>
+              <input
+                type="number"
+                min="0.1"
+                step="any"
+                required
+                value={netWeightPerPack}
+                onChange={(e) => setNetWeightPerPack(Number(e.target.value) || 0)}
+                className="w-full h-11 px-3 rounded-xl border border-slate-300 text-xs font-black text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
               />
             </div>
           </div>
 
-          {/* 6. Khối lượng thực của mỗi gói (Req 6 & 7) */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Khối lượng thực mỗi gói: <span className="text-red-500">*</span>
+          {/* 5. Số lượng bao gói & Tổng khối lượng tiêu hao (Yêu cầu 3) */}
+          <div className="space-y-2 p-3.5 bg-emerald-50/60 rounded-2xl border border-emerald-200">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-extrabold text-emerald-950">
+                3. Số lượng bao gói phát hành: <span className="text-red-500">*</span>
               </label>
-              <div className="flex gap-1.5 items-center">
-                <input
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  value={netWeightPerPack}
-                  onChange={(e) => setNetWeightPerPack(Number(e.target.value) || 1)}
-                  className="flex-1 h-12 px-3 rounded-xl border-2 border-slate-300 text-base font-extrabold text-slate-900 bg-slate-50"
-                />
-                <span className="font-bold text-sm text-slate-600 px-1">{sourceUnit}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-slate-600 font-semibold">Đơn vị:</span>
+                <select
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className="text-xs font-bold text-emerald-900 bg-white border border-emerald-300 rounded-lg px-2 py-1"
+                >
+                  <option value="Túi">Túi</option>
+                  <option value="Hộp">Hộp</option>
+                  <option value="Gói">Gói</option>
+                  <option value="Thùng">Thùng</option>
+                  <option value="Con">Con</option>
+                </select>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Đơn vị thành phẩm:
-              </label>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                className="w-full h-12 px-3 rounded-xl border-2 border-slate-300 text-xs font-bold text-slate-800 bg-slate-50"
-              >
-                <option value="Túi">Túi</option>
-                <option value="Hộp">Hộp</option>
-                <option value="Gói">Gói</option>
-                <option value="Con">Con</option>
-                <option value="Khay">Khay</option>
-                <option value="Thùng">Thùng</option>
-              </select>
-            </div>
-          </div>
-
-          {/* 7. Số lượng thành phẩm */}
-          <div>
             <CounterInput
-              label="3. Số lượng gói / hộp cần dán tem QR:"
+              label=""
               value={quantity}
               onChange={setQuantity}
               unit={unit}
-              step={10}
+              step={1}
               min={1}
             />
 
-            {/* Báo lượng đóng gói và so sánh với khả dụng */}
-            <div className="mt-2 p-2.5 rounded-xl border text-xs flex items-center justify-between font-semibold bg-slate-50 border-slate-200">
-              <span>Tổng lượng cần dùng: <strong>{totalAttemptedQuantity.toLocaleString()} {sourceUnit}</strong></span>
-              <span>Còn lại sau đóng: <strong className={remainingAvailable - totalAttemptedQuantity < 0 ? 'text-red-600' : 'text-emerald-700'}>
-                {Math.max(0, remainingAvailable - totalAttemptedQuantity).toLocaleString()} {sourceUnit}
-              </strong></span>
+            {/* Hiển thị ngay tổng khối lượng cần dùng = số gói × khối lượng tịnh (Yêu cầu 3) */}
+            <div className="flex justify-between items-center pt-2 border-t border-emerald-200 text-xs">
+              <span className="font-bold text-slate-700">
+                Tổng khối lượng cần dùng ({quantity} {unit} × {netWeightPerPack} {sourceUnit}):
+              </span>
+              <strong className={`text-base font-black ${isQuantityExceeded ? 'text-red-700' : 'text-emerald-900'}`}>
+                {totalAttemptedQuantity.toLocaleString()} {sourceUnit}
+              </strong>
             </div>
+
             {isQuantityExceeded && (
-              <p className="mt-1.5 text-xs text-red-600 font-bold">
-                ⚠️ Tổng lượng đóng gói ({totalAttemptedQuantity.toLocaleString()} {sourceUnit}) vượt quá lượng khả dụng ({remainingAvailable.toLocaleString()} {sourceUnit})!
-              </p>
+              <div className="p-2.5 bg-red-50 border border-red-300 rounded-xl text-xs text-red-700 font-bold">
+                ⚠️ Khối lượng cần dùng ({totalAttemptedQuantity.toLocaleString()} {sourceUnit}) vượt quá lượng khả dụng ({availableQuantity.toLocaleString()} {sourceUnit}) của dòng tồn này!
+              </div>
             )}
           </div>
 
-          {/* 8. Ngày đóng gói & Hạn sử dụng khuyến nghị (Req 6 & 7) */}
+          {/* 6. Ngày đóng gói & Hạn sử dụng */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Ngày đóng gói: <span className="text-red-500">*</span>
+                Ngày đóng gói: *
               </label>
               <input
                 type="date"
+                required
                 value={createdDate}
                 onChange={(e) => setCreatedDate(e.target.value)}
-                className="w-full h-12 px-3 rounded-xl border-2 border-slate-300 text-xs font-bold text-slate-800 bg-slate-50"
-                required
+                className="w-full h-11 px-3 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
               />
+              {processingDate && (
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  Ngày sơ chế: {processingDate}
+                </span>
+              )}
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Hạn sử dụng khuyến nghị: <span className="text-red-500">*</span>
+                {isLiveProduct ? 'Hạn dùng (Tùy chọn):' : 'Hạn sử dụng khuyến nghị: *'}
               </label>
               <input
                 type="date"
+                required={!isLiveProduct}
                 value={expiryDate}
                 onChange={(e) => setExpiryDate(e.target.value)}
-                className="w-full h-12 px-3 rounded-xl border-2 border-slate-300 text-xs font-bold text-slate-800 bg-slate-50"
-                required
+                className="w-full h-11 px-3 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
               />
             </div>
           </div>
 
           {dateError && (
-            <div className="p-3 bg-red-50 border border-red-300 rounded-xl text-xs text-red-800 font-bold">
+            <div className="p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 font-bold">
               ⚠️ {dateError}
             </div>
           )}
 
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900">
-            ℹ️ Hệ thống sẽ tự động gán mã truy xuất duy nhất nối liền từ Vùng trồng → Mùa vụ → Thu hoạch → Sơ chế → Tem gói QR.
+          {/* 7. Tiêu chuẩn chất lượng */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Tiêu chuẩn chứng nhận in trên tem:
+            </label>
+            <input
+              type="text"
+              value={standard}
+              onChange={(e) => setStandard(e.target.value)}
+              className="w-full h-11 px-3 rounded-xl border border-slate-300 text-xs font-semibold text-slate-900 bg-slate-50 focus:border-emerald-600 focus:outline-none"
+            />
           </div>
 
+          {/* Nút submit với bảo vệ submit 2 lần */}
           <button
             type="submit"
-            disabled={isQuantityExceeded || !!dateError || remainingAvailable <= 0}
-            className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xl font-extrabold shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 mt-4"
+            disabled={isQuantityExceeded || quantity <= 0 || !!dateError || isSubmitting}
+            className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-base font-black shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all"
           >
-            <span>✨</span>
-            <span>TỰ ĐỘNG SINH MÃ QR SẢN PHẨM</span>
+            <span>🏷️</span>
+            <span>{isSubmitting ? 'ĐANG TẠO MÃ...' : 'PHÁT HÀNH TEM QR TRUY XUẤT'}</span>
           </button>
         </form>
       </div>
-
-      {/* Modal Sơ chế chung */}
-      {selectedHarvest && (
-        <HarvestProcessingModal
-          isOpen={isProcessingModalOpen}
-          onClose={() => setIsProcessingModalOpen(false)}
-          harvestLot={selectedHarvest}
-        />
-      )}
     </div>
   );
 };

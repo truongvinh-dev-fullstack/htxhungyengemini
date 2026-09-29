@@ -11,11 +11,14 @@ import { DiaryAddWizard } from './diary/DiaryAddWizard';
 import { DiaryDetail } from './diary/DiaryDetail';
 import { FarmList } from './farm/FarmList';
 import { FarmAdd } from './farm/FarmAdd';
+import { FarmCycleAdd } from './farm/FarmCycleAdd';
 import { FarmDetail } from './farm/FarmDetail';
 import { FarmSeasonDetail } from './farm/FarmSeasonDetail';
 import { HarvestList } from './harvest/HarvestList';
 import { HarvestAdd } from './harvest/HarvestAdd';
 import { HarvestDetail } from './harvest/HarvestDetail';
+import { HandoverList } from './handover/HandoverList';
+import { HandoverDetail } from './handover/HandoverDetail';
 import { ProcessingList } from './processing/ProcessingList';
 import { ProcessingAdd } from './processing/ProcessingAdd';
 import { ProcessingDetail } from './processing/ProcessingDetail';
@@ -34,10 +37,13 @@ import { InventoryDetail } from './inventory/InventoryDetail';
 import { InventoryAdd } from './inventory/InventoryAdd';
 import { StockTransactionAdd } from './inventory/StockTransactionAdd';
 import { StockTransactionDetail } from './inventory/StockTransactionDetail';
+import { ProductStockList } from './inventory/ProductStockList';
+import { ProductStockDetail } from './inventory/ProductStockDetail';
 import { DashboardPage } from './dashboard/DashboardPage';
 import { NotificationList } from './notifications/NotificationList';
 import { NotificationDetail } from './notifications/NotificationDetail';
 import { ProfilePage } from './profile/ProfilePage';
+import { FeedbackList } from './feedback/FeedbackList';
 import { canAccessScreen } from '../utils/permissions';
 
 export const MainApp: React.FC = () => {
@@ -82,6 +88,8 @@ export const MainApp: React.FC = () => {
         return <FarmList />;
       case 'farm_add':
         return <FarmAdd />;
+      case 'farm_cycle_add':
+        return <FarmCycleAdd />;
       case 'farm_detail':
         return <FarmDetail />;
       case 'farm_season_detail':
@@ -92,6 +100,10 @@ export const MainApp: React.FC = () => {
         return <HarvestAdd />;
       case 'harvest_detail':
         return <HarvestDetail />;
+      case 'handover_list':
+        return <HandoverList />;
+      case 'handover_detail':
+        return <HandoverDetail />;
       case 'processing_list':
         return <ProcessingList />;
       case 'processing_add':
@@ -118,6 +130,10 @@ export const MainApp: React.FC = () => {
         return <MemberList />;
       case 'member_detail':
         return <MemberDetail />;
+      case 'product_stock_list':
+        return <ProductStockList />;
+      case 'product_stock_detail':
+        return <ProductStockDetail />;
       case 'inventory_list':
         return <InventoryList />;
       case 'inventory_detail':
@@ -136,6 +152,8 @@ export const MainApp: React.FC = () => {
         return <NotificationDetail />;
       case 'profile':
         return <ProfilePage />;
+      case 'feedback_list':
+        return <FeedbackList />;
       default:
         return <HomePage />;
     }

@@ -1,7 +1,11 @@
 // Cấu hình môi trường và API Endpoint
+const env = (typeof import.meta !== 'undefined' && (import.meta as any)?.env)
+  ? (import.meta as any).env
+  : (typeof process !== 'undefined' ? process.env : {});
+
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
-  USE_MOCK: import.meta.env.VITE_USE_MOCK === 'true',
+  BASE_URL: env?.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  USE_MOCK: env?.VITE_USE_MOCK !== undefined ? env.VITE_USE_MOCK === 'true' : true,
   TIMEOUT_MS: 15000,
   ENDPOINTS: {
     AUTH: {

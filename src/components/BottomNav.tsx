@@ -2,9 +2,9 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, notifications, currentRole } = useApp();
+  const { activeTab, setActiveTab, notifications, currentRole, currentHTX, currentUser } = useApp();
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead && (!n.htxId || n.htxId === currentHTX.id) && (!n.userId || n.userId === currentUser.id)).length;
 
   const getWorkspaceTabConfig = () => {
     switch (currentRole) {
@@ -16,7 +16,7 @@ export const BottomNav: React.FC = () => {
         return { icon: '🌾', label: 'Mùa vụ & Lô' };
       case 'R06':
       default:
-        return { icon: '📖', label: 'Sổ nhật ký' };
+        return { icon: '📖', label: 'Nhật ký' };
     }
   };
 

@@ -2,12 +2,13 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 import { AppNotification } from '../../types';
+import { canAccessScreen } from '../../utils/permissions';
 
 export const NotificationDetail: React.FC = () => {
-  const { screenParams, goBack, navigateTo } = useApp();
+  const { screenParams, goBack, navigateTo, currentHTX, currentUser, currentRole } = useApp();
   const item: AppNotification = screenParams?.notification;
 
-  if (!item) {
+  if (!item || (item.htxId && item.htxId !== currentHTX.id) || (item.userId && item.userId !== currentUser.id)) {
     return (
       <div className="p-4 text-center">
         <p>Không tìm thấy thông báo.</p>
@@ -43,15 +44,15 @@ export const NotificationDetail: React.FC = () => {
           </div>
 
           {/* Action button */}
-          {item.actionScreen ? (
+          {item.actionScreen && canAccessScreen(currentRole, item.actionScreen) ? (
             <button
-              onClick={() => navigateTo(item.actionScreen!)}
+              onClick={() => navigateTo(item.actionScreen!, item.actionParams)}
               className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-extrabold text-lg shadow-md flex items-center justify-center gap-2 mt-4"
             >
               <span>➜</span>
               <span>{item.actionLabel || 'Xem chi tiết'}</span>
             </button>
-          ) : item.type === 'reminder' ? (
+          ) : !item.actionScreen && item.type === 'reminder' && canAccessScreen(currentRole, 'diary_add') ? (
             <button
               onClick={() => navigateTo('diary_add')}
               className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-extrabold text-lg shadow-md flex items-center justify-center gap-2 mt-4"

@@ -1,7 +1,12 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 import { SeasonHistoryItem } from '../../types';
+import {
+  getCycleStatusInfo,
+  getCycleTerm,
+  getFacilityTypeLabel,
+} from '../../utils/productionUtils';
 
 export const FarmSeasonDetail: React.FC = () => {
   const {
@@ -14,6 +19,8 @@ export const FarmSeasonDetail: React.FC = () => {
     currentHTX,
     currentRole,
     currentUser,
+    startProductionCycle,
+    finishProductionCycle,
   } = useApp();
 
   const targetZoneId: string | undefined = screenParams?.zoneId || screenParams?.zone?.id;
@@ -53,53 +60,8 @@ export const FarmSeasonDetail: React.FC = () => {
     );
   }
 
-  // Tìm mùa vụ trong lịch sử của thửa
-  const season: SeasonHistoryItem | undefined = useMemo(() => {
-    if (!zone) return undefined;
-    const history = zone.seasonHistory || [];
-
-    // Tìm theo seasonId
-    let found = history.find((s) => s.seasonId === targetSeasonId);
-    if (found) return found;
-
-    // Nếu truyền targetSeasonId === 'current' hoặc không tìm thấy
-    if (targetSeasonId === 'current' || targetSeasonId === zone.currentSeasonId) {
-      found = history.find((s) => s.status === 'Đang canh tác' || s.seasonName === zone.season);
-      if (found) return found;
-    }
-
-    // Dự phòng tìm theo tên mùa vụ
-    if (targetSeasonId) {
-      found = history.find((s) => s.seasonName.toLowerCase() === targetSeasonId.toLowerCase());
-      if (found) return found;
-    }
-
-    // Nếu vẫn không thấy nhưng đang là vụ hiện hành của thửa
-    if (!targetSeasonId || targetSeasonId === zone.currentSeasonId || targetSeasonId === 'current') {
-      return {
-        seasonId: zone.currentSeasonId || `s-${zone.id}-current`,
-        seasonName: zone.season,
-        year: new Date().getFullYear(),
-        status: 'Đang canh tác',
-        variety: zone.variety,
-        areaValue: zone.areaValue,
-        areaUnit: zone.areaUnit,
-        areaOrQuantity: zone.areaOrQuantity,
-        ownerId: zone.ownerId,
-        ownerName: zone.ownerName,
-        seasonStartDate: zone.seasonStartDate,
-        seasonEndDate: zone.seasonEndDate,
-        seasonStage: zone.seasonStage,
-        expectedYieldValue: zone.expectedYieldValue,
-        expectedYieldUnit: zone.expectedYieldUnit,
-        expectedHarvestDate: zone.expectedHarvestDate,
-        forecastYield: zone.forecastYield,
-        notes: zone.notes,
-      };
-    }
-
-    return undefined;
-  }, [zone, targetSeasonId]);
+  const season: SeasonHistoryItem | undefined = (zone.cycles?.length ? zone.cycles : zone.seasonHistory || [])
+    .find((cycle) => (cycle.cycleId || cycle.seasonId) === targetSeasonId);
 
   if (!season) {
     return (
@@ -124,42 +86,48 @@ export const FarmSeasonDetail: React.FC = () => {
     );
   }
 
-  // Xác định vụ này có phải vụ đang canh tác không
+  const cycleTerm = zone ? getCycleTerm(zone) : 'Vụ/lứa';
+  const facilityLabel = zone ? getFacilityTypeLabel(zone.facilityType) : 'Đơn vị sản xuất';
+  const isSuspended = zone?.unitStatus === 'tam_ngung' || zone?.unitStatus === 'ngung_su_dung';
+
+  // Xác định vụ này có phải vụ đang thực hiện không
   const isCurrentSeason =
-    (Boolean(season.seasonId && zone.currentSeasonId) && season.seasonId === zone.currentSeasonId) ||
-    (season.status === 'Đang canh tác' && season.seasonName === zone.season);
+    (season.status === 'dang_thuc_hien' || season.status === 'Đang canh tác') &&
+    !isSuspended;
 
   // Lọc các lô thu hoạch thuộc đúng thửa ruộng và đúng mùa vụ này
-  const seasonHarvests = useMemo(() => {
+  const seasonHarvests = (() => {
     return harvests.filter((h) => {
       if (h.farmZoneId !== zone.id) return false;
-      return h.seasonId === season.seasonId;
+      return (h.cycleId || h.seasonId) === (season.cycleId || season.seasonId);
     });
-  }, [harvests, zone.id, season.seasonId]);
+  })();
 
   // Tính tổng thực thu theo từng đơn vị tương thích (tách riêng kg, con...)
-  const totalsByUnit = useMemo(() => {
+  const totalsByUnit = (() => {
     const map: Record<string, number> = {};
     seasonHarvests.forEach((h) => {
       const u = h.unit || 'kg';
       map[u] = (map[u] || 0) + (Number(h.yieldQuantity) || 0);
     });
     return map;
-  }, [seasonHarvests]);
+  })();
 
   // Lọc nhật ký thuộc vụ này
-  const seasonDiaries = useMemo(() => {
+  const seasonDiaries = (() => {
     return diaries.filter((d) => {
       if (d.farmZoneId !== zone.id) return false;
-      return d.seasonId === season.seasonId;
+      return (d.cycleId || d.seasonId) === (season.cycleId || season.seasonId);
     });
-  }, [diaries, zone.id, season.seasonId]);
+  })();
+
+  const cycleStatus = getCycleStatusInfo(season.status);
 
   return (
     <div className="pb-24 bg-slate-50 min-h-screen">
       <Header
-        title={`Chi tiết vụ: ${season.seasonName}`}
-        voiceText={`Chi tiết mùa vụ ${season.seasonName} của thửa ruộng ${zone.name}. Bác có thể xem kế hoạch, danh sách lô thu hoạch và kết quả thực tế của vụ.`}
+        title={`Chi tiết ${cycleTerm.toLowerCase()}: ${season.seasonName}`}
+        voiceText={`Chi tiết ${cycleTerm.toLowerCase()} ${season.seasonName} của ${facilityLabel.toLowerCase()} ${zone.name}. Bác có thể xem kế hoạch, danh sách lô thu hoạch và kết quả thực tế của vụ.`}
       />
 
       <div className="p-4 space-y-4">
@@ -171,16 +139,12 @@ export const FarmSeasonDetail: React.FC = () => {
             </span>
             <div className="flex items-center gap-1.5">
               <span
-                className={`text-xs font-extrabold px-3 py-1 rounded-full ${
-                  isCurrentSeason
-                    ? 'bg-blue-100 text-blue-900 border border-blue-300'
-                    : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                }`}
+                className={`text-xs font-extrabold px-3 py-1 rounded-full border ${cycleStatus.badgeClass}`}
               >
-                {season.status}
+                {cycleStatus.label}
               </span>
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300">
-                {isCurrentSeason ? '🌿 Vụ hiện hành' : '📁 Hồ sơ lưu trữ (Chỉ đọc)'}
+                {isCurrentSeason ? `🌿 ${cycleTerm} hiện hành` : cycleStatus.isUpcoming ? '📅 Kế hoạch dự kiến' : '📁 Hồ sơ lưu trữ (Chỉ đọc)'}
               </span>
             </div>
           </div>
@@ -188,9 +152,11 @@ export const FarmSeasonDetail: React.FC = () => {
           <div>
             <h2 className="text-2xl font-black text-slate-900">{season.seasonName}</h2>
             <p className="text-xs text-slate-500 font-bold mt-0.5">
-              Thửa ruộng: <span className="text-slate-800">{zone.name}</span>
+              {facilityLabel}: <span className="text-slate-800">{zone.name}</span>
             </p>
           </div>
+          {currentRole === 'R03' && cycleStatus.isUpcoming && <button type="button" className="w-full p-3 rounded-xl bg-emerald-700 text-white font-bold" onClick={() => { const result = startProductionCycle(zone.id, season.cycleId || season.seasonId); if (!result.success) alert(result.message); }}>Bắt đầu {cycleTerm.toLowerCase()}</button>}
+          {currentRole === 'R03' && cycleStatus.isActive && <button type="button" className="w-full p-3 rounded-xl bg-slate-800 text-white font-bold" onClick={() => { const result = finishProductionCycle(zone.id, season.cycleId || season.seasonId); if (!result.success) alert(result.message); }}>Kết thúc {cycleTerm.toLowerCase()}</button>}
         </div>
 
         {/* PHẦN 1: THÔNG TIN THỬA TẠI THỜI ĐIỂM VỤ (Dữ liệu lưu theo vụ, không lấy thông tin hiện tại thay thế) */}
@@ -201,10 +167,11 @@ export const FarmSeasonDetail: React.FC = () => {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            {season.stockedQuantity !== undefined && <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200"><span className="text-slate-500 font-bold block mb-0.5">Số con nhập lứa này:</span><span className="text-sm font-extrabold text-slate-900">{season.stockedQuantity} con</span></div>}
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
               <span className="text-slate-500 font-bold block mb-0.5">Giống gieo trồng / vật nuôi:</span>
               <span className="text-sm font-extrabold text-slate-900">
-                {season.variety || zone.variety}
+                {season.variety || 'Chưa cập nhật'}
               </span>
             </div>
 
@@ -407,7 +374,14 @@ export const FarmSeasonDetail: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => navigateTo('harvest_detail', { harvest: h })}
+                    onClick={() =>
+                      navigateTo('harvest_detail', {
+                        harvest: h,
+                        lot: h,
+                        lotId: h.id,
+                        code: h.code,
+                      })
+                    }
                     className="w-full py-2 bg-white hover:bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1 shadow-2xs active:scale-98 transition-all"
                   >
                     <span>Xem chi tiết lô thu hoạch</span>
@@ -425,7 +399,7 @@ export const FarmSeasonDetail: React.FC = () => {
             <div>
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-1.5">
                 <span>📓</span>
-                <span>Nhật ký đồng ruộng thuộc vụ</span>
+                <span>Nhật ký sản xuất thuộc vụ</span>
               </h3>
               <p className="text-[11px] text-slate-500 font-medium">
                 {seasonDiaries.length} bản ghi nhật ký
@@ -468,20 +442,20 @@ export const FarmSeasonDetail: React.FC = () => {
 
         {/* CÁC NÚT ĐIỀU HƯỚNG VÀ THAO TÁC */}
         <div className="space-y-2 pt-2">
-          {isCurrentSeason && currentRole === 'R06' && (
+          {isCurrentSeason && currentRole === 'R06' && !isSuspended && (
             <button
               type="button"
-              onClick={() => navigateTo('diary_add', { zoneId: zone.id, zone })}
+              onClick={() => navigateTo('diary_add', { zoneId: zone.id, zone, seasonId: season.seasonId })}
               className="w-full py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-base font-extrabold shadow flex items-center justify-center gap-2"
             >
               <span>📝</span>
-              <span>Ghi nhật ký cho thửa ruộng này</span>
+              <span>Ghi nhật ký cho {season.seasonName}</span>
             </button>
           )}
 
           {!isCurrentSeason && (
             <div className="p-3 bg-slate-100 border border-slate-300 rounded-2xl text-center text-xs text-slate-600 font-bold">
-              🔒 Mùa vụ này đã kết thúc và được lưu trữ hồ sơ VietGAP (Chế độ chỉ đọc)
+              🔒 {cycleStatus.isUpcoming ? `${cycleTerm} đang dự kiến, chưa bắt đầu` : `${cycleTerm} đã kết thúc hoặc nơi sản xuất đang tạm ngừng`} (Chế độ chỉ đọc)
             </div>
           )}
 

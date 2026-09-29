@@ -6,17 +6,19 @@ export const DashboardPage: React.FC = () => {
   const { currentRole, currentHTX, currentUser, orders, inventory, members, farmZones } = useApp();
 
   // SRS Compliance: Only 'Hoàn thành' orders are counted towards realized revenue
-  const completedOrders = orders.filter((o) => o.status === 'Hoàn thành');
-  const totalRevenue = completedOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const pendingOrders = orders.filter((o) => o.status === 'Mới' || o.status === 'Đang giao');
-  const totalStockValue = inventory.reduce((sum, item) => sum + item.stock * (item.unitPrice || 0), 0);
+  const htxOrders = orders.filter((o) => o.htxId === currentHTX.id);
+  const htxInventory = inventory.filter((item) => item.htxId === currentHTX.id);
+  const completedOrders = htxOrders.filter((o) => o.status === 'Hoàn thành');
+  const totalRevenue = completedOrders.filter((o) => !o.sourceOwnerId || o.sourceOwnerId === currentHTX.id).reduce((sum, o) => sum + o.totalAmount, 0);
+  const pendingOrders = htxOrders.filter((o) => o.status === 'Mới' || o.status === 'Đang giao');
+  const totalStockValue = htxInventory.reduce((sum, item) => sum + item.stock * (item.unitPrice || 0), 0);
 
   // Scoped metrics for household R06
   const myOrders = currentRole === 'R06'
-    ? orders.filter((o) => o.sellerId === currentUser.id || (!o.sellerId && currentHTX.id === 'anninh'))
-    : orders;
+    ? htxOrders.filter((o) => o.sellerId === currentUser.id || o.sourceOwnerId === currentUser.id)
+    : htxOrders;
   const myCompletedOrders = myOrders.filter((o) => o.status === 'Hoàn thành');
-  const myRevenue = myCompletedOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+  const myRevenue = myCompletedOrders.filter((o) => o.sellerId === currentUser.id).reduce((sum, o) => sum + o.totalAmount, 0);
 
   const htxMembers = members.filter((m) => m.htxId === currentHTX.id);
   const activeMembers = htxMembers.filter((m) => m.status === 'active');
@@ -255,7 +257,7 @@ export const DashboardPage: React.FC = () => {
                     <span className="text-2xl">🏬</span>
                     <span className="text-xs font-bold text-slate-500 block">Giá trị kho vật tư</span>
                     <span className="text-xl font-extrabold text-amber-900">{totalStockValue.toLocaleString()} đ</span>
-                    <span className="text-[11px] text-blue-700 font-bold block">{inventory.length} mặt hàng</span>
+                    <span className="text-[11px] text-blue-700 font-bold block">{htxInventory.length} mặt hàng</span>
                   </div>
                 </div>
 
@@ -298,14 +300,14 @@ export const DashboardPage: React.FC = () => {
                 <span className="text-2xl">💰</span>
                 <span className="text-xs font-bold text-slate-500 block">Doanh thu đơn hàng</span>
                 <span className="text-xl font-extrabold text-purple-900">{totalRevenue.toLocaleString()} đ</span>
-                <span className="text-[11px] text-emerald-700 font-bold block">{orders.length} đơn đã tạo</span>
+                <span className="text-[11px] text-emerald-700 font-bold block">{htxOrders.length} đơn đã tạo</span>
               </div>
 
               <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">
                 <span className="text-2xl">🏬</span>
                 <span className="text-xs font-bold text-slate-500 block">Giá trị tồn kho</span>
                 <span className="text-xl font-extrabold text-amber-900">{totalStockValue.toLocaleString()} đ</span>
-                <span className="text-[11px] text-blue-700 font-bold block">{inventory.length} danh mục vật tư</span>
+                <span className="text-[11px] text-blue-700 font-bold block">{htxInventory.length} danh mục vật tư</span>
               </div>
 
               <div className="bg-white rounded-3xl p-4 border-2 border-slate-200 shadow-sm space-y-1">

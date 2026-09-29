@@ -1,4 +1,5 @@
 import { FarmZone, SeasonHistoryItem } from '../types';
+import { getCycles, getCycleStatusInfo, getUnitStatusInfo } from './productionUtils';
 
 export interface SeasonMatchResult {
   status: 'matched' | 'no_season' | 'overlap';
@@ -166,20 +167,31 @@ export function isPerformedAtInSeason(
  */
 export function matchSeasonForZone(
   zone: FarmZone | undefined,
-  performedAtStr: string
+  performedAtStr: string,
+  allowEnded: boolean = false,
+  requestedCycleId?: string
 ): SeasonMatchResult {
   if (!zone) {
     return {
       status: 'no_season',
-      message: 'Chưa chọn thửa ruộng hoặc thửa không tồn tại.',
+      message: 'Chưa chọn nơi sản xuất hoặc nơi sản xuất không tồn tại.',
     };
   }
 
-  const history = zone.seasonHistory || [];
+  // 1. Kiểm tra trạng thái sử dụng của đơn vị sản xuất
+  if (!getUnitStatusInfo(zone.unitStatus || zone.status).isAvailable) {
+    const statusText = zone.unitStatus === 'ngung_su_dung' ? 'Ngừng sử dụng' : 'Tạm ngừng sử dụng';
+    return {
+      status: 'no_season',
+      message: `Nơi sản xuất đang ở trạng thái "${statusText}"${zone.statusNote ? ` (${zone.statusNote})` : ''}. Không thể tạo nhật ký hoặc thu hoạch mới.`,
+    };
+  }
+
+  const history = getCycles(zone);
   if (history.length === 0) {
     return {
       status: 'no_season',
-      message: 'Thửa ruộng này chưa có thông tin lịch sử mùa vụ nào.',
+      message: 'Nơi sản xuất này chưa có vụ/lứa nào được lập từ Web HTX.',
     };
   }
 
@@ -190,21 +202,49 @@ export function matchSeasonForZone(
   if (matched.length === 0) {
     return {
       status: 'no_season',
-      message: 'Thời điểm này chưa thuộc mùa vụ nào của thửa.',
+      message: 'Thời điểm thực hiện không thuộc khoảng thời gian của bất kỳ vụ/lứa nào của nơi sản xuất.',
     };
   }
 
-  if (matched.length > 1) {
+  if (requestedCycleId && !matched.some((cycle) => (cycle.cycleId || cycle.seasonId) === requestedCycleId)) {
+    return { status: 'no_season', message: 'Vụ/lứa được chọn không phù hợp với thời điểm thực hiện.' };
+  }
+
+  if (matched.length > 1 && !requestedCycleId) {
     const names = matched.map((s) => s.seasonName).join(', ');
     return {
       status: 'overlap',
-      message: `Dữ liệu mùa vụ bị chồng thời gian (${names}). Vui lòng kiểm tra lại cấu hình mùa vụ của thửa.`,
+      message: `Thời điểm thực hiện bị trùng lặp giữa nhiều vụ/lứa (${names}). Vui lòng kiểm tra lại ngày giờ thực hiện.`,
       seasons: matched,
     };
   }
 
+  const candidate = requestedCycleId ? matched.find((cycle) => (cycle.cycleId || cycle.seasonId) === requestedCycleId)! : matched[0];
+
+  // 2. Kiểm tra trạng thái hoạt động của chu kỳ
+  if (!allowEnded) {
+    if (getCycleStatusInfo(candidate.status).code === 'da_ket_thuc') {
+      return {
+        status: 'no_season',
+        message: `${candidate.seasonName} đã kết thúc. Không thể thêm nhật ký hoặc thu hoạch mới vào vụ/lứa đã kết thúc.`,
+      };
+    }
+    if (getCycleStatusInfo(candidate.status).code === 'du_kien') {
+      return {
+        status: 'no_season',
+        message: `${candidate.seasonName} đang ở trạng thái Dự kiến, chưa bắt đầu thực hiện.`,
+      };
+    }
+    if (!getCycleStatusInfo(candidate.status).isActive) {
+      return {
+        status: 'no_season',
+        message: `${candidate.seasonName} ở trạng thái ${getCycleStatusInfo(candidate.status).label}, chưa thể ghi dữ liệu sản xuất.`,
+      };
+    }
+  }
+
   return {
     status: 'matched',
-    season: matched[0],
+    season: candidate,
   };
 }

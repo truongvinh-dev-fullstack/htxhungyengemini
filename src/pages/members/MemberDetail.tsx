@@ -122,7 +122,7 @@ export const MemberDetail: React.FC = () => {
         <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-3">
           <div className="flex items-center justify-between border-b pb-2">
             <h3 className="text-base font-extrabold text-slate-900">
-              Nhật ký đồng ruộng gần đây ({memberDiaries.length})
+              Nhật ký sản xuất gần đây ({memberDiaries.length})
             </h3>
           </div>
 
