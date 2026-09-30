@@ -1,16 +1,17 @@
 import React from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, getCanonicalMemberName } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 import { PostHarvestWorkflowTabs } from '../../components/PostHarvestWorkflowTabs';
 import { canManagePackaging, canViewPackagedProduct } from '../../utils/permissions';
+import { getPackageOwnership } from '../../utils/packageOwnership';
 
 export const PackagingList: React.FC = () => {
-  const { packages, harvests, currentHTX, currentRole, currentUser, navigateTo } = useApp();
+  const { packages, harvests, productStocks, members, currentHTX, currentRole, currentUser, navigateTo } = useApp();
   const canCreate = canManagePackaging(currentRole);
   const visiblePackages = packages.filter((pkg) =>
     canViewPackagedProduct(
       currentRole, pkg, currentHTX.id, currentUser.id,
-      harvests.find((lot) => lot.id === pkg.harvestLotId)
+      harvests.find((lot) => lot.id === pkg.harvestLotId), productStocks
     )
   );
 
@@ -20,7 +21,7 @@ export const PackagingList: React.FC = () => {
         title={currentRole === 'R04' ? 'Lô đóng gói & QR' : 'Đóng gói sản phẩm & Mã QR'}
         voiceText={canCreate
           ? 'Đây là danh sách lô đã đóng gói và mã QR. Bác có thể bấm Tạo mã mới để đóng gói lô thu hoạch.'
-          : 'Đây là danh sách lô đã đóng gói và mã QR thuộc Hợp tác xã hiện tại.'}
+          : 'Đây là danh sách lô đóng gói HTX sở hữu hoặc đang giữ, gồm cả hàng ký gửi.'}
       />
 
       <div className="p-4 space-y-4">
@@ -64,6 +65,13 @@ export const PackagingList: React.FC = () => {
           ) : (
             visiblePackages.map((pkg) => {
               const hasProc = pkg.processingSnapshot?.hasProcessing || !!pkg.processingLotId;
+              const ownership = getPackageOwnership(pkg, productStocks);
+              const isConsignedAtHTX = ownership.ownerType === 'ho_dan' && ownership.holderId === currentHTX.id;
+              const ownerName = ownership.ownerType === 'htx'
+                ? currentHTX.name
+                : ownership.ownerType === 'ho_dan'
+                ? getCanonicalMemberName(ownership.ownerId, ownership.ownerName, members)
+                : 'Chưa xác định';
               return (
                 <div
                   key={pkg.id}
@@ -111,6 +119,26 @@ export const PackagingList: React.FC = () => {
                         <span className="text-emerald-700 font-bold">{pkg.standard}</span>
                       </div>
                     </div>
+                  </div>
+
+                  <div className={`rounded-2xl border px-3 py-2.5 text-xs space-y-1 ${
+                    ownership.ownerType === 'ho_dan'
+                      ? 'border-amber-200 bg-amber-50 text-amber-950'
+                      : ownership.ownerType === 'htx'
+                      ? 'border-sky-200 bg-sky-50 text-sky-950'
+                      : 'border-slate-200 bg-slate-50 text-slate-700'
+                  }`}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-black uppercase tracking-wide">
+                        {isConsignedAtHTX ? '📦 Hàng ký gửi tại HTX' : ownership.ownerType === 'ho_dan' ? '👤 Lô của hộ' : ownership.ownerType === 'htx' ? '🏢 Lô của HTX' : 'Chưa rõ chủ sở hữu'}
+                      </span>
+                      {pkg.onBehalfOfFarmer && <span className="font-bold">🤝 R03 đóng gói hộ</span>}
+                      <span>Chủ sở hữu: <strong>{ownership.ownerType === 'ho_dan' ? `Hộ ${ownerName}` : ownerName}</strong></span>
+                    </div>
+                    {isConsignedAtHTX && <div>Bên đang giữ: <strong>{currentHTX.name}</strong></div>}
+                    {pkg.onBehalfOfFarmer && pkg.actorName && (
+                      <div>Người đóng gói hộ: <strong>{pkg.actorName}</strong></div>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500">

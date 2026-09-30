@@ -30,6 +30,7 @@ export const ProductHandoverModal: React.FC<Props> = ({
     harvests,
     productStocks,
     packages,
+    members,
     handovers,
     orders,
     addProductHandover,

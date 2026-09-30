@@ -299,7 +299,7 @@ export const PackagingAdd: React.FC = () => {
                   const badge = getProductStateBadge(s.state);
                   return (
                     <option key={s.id} value={s.id}>
-                      [{s.id}] {s.variety} · {badge.shortLabel} (Khả dụng: {sBalance.availableQuantity.toLocaleString()} {s.unit})
+                      [{s.id}] {s.variety} · Chủ: {s.ownerType === 'htx' ? currentHTX.shortName : s.ownerName || 'Hộ chưa rõ'} · {badge.shortLabel} (Khả dụng: {sBalance.availableQuantity.toLocaleString()} {s.unit})
                     </option>
                   );
                 })}

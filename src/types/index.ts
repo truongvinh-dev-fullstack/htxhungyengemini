@@ -386,6 +386,9 @@ export interface PackagedProduct {
   ownerName?: string;
   holderId?: string;
   holderName?: string;
+  actorId?: string; // Người thực hiện đóng gói
+  actorName?: string;
+  onBehalfOfFarmer?: boolean; // R03 đóng gói cho hộ sở hữu
 }
 
 export type ProductState = 'hang_tho' | 'da_xu_ly' | 'da_dong_goi' | 'cho_kiem_tra' | 'da_ban';

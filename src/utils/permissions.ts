@@ -1,4 +1,5 @@
 import { UserRole, DiaryEntry, HarvestLot, PackagedProduct, ProductHandover, ProductStockItem } from '../types';
+import { getPackageOwnership } from './packageOwnership';
 
 export const canViewHarvestScreen = (role: UserRole | undefined): boolean =>
   role === 'R02' || role === 'R03' || role === 'R04' || role === 'R06';
@@ -81,11 +82,23 @@ export const canViewPackagedProduct = (
   pkg: PackagedProduct,
   htxId: string,
   userId: string,
-  sourceLot?: HarvestLot
-): boolean =>
-  canViewPackagingScreen(role) && pkg.htxId === htxId &&
-  (role !== 'R06' || sourceLot?.ownerId === userId || pkg.ownerId === userId ||
-    !!pkg.sourceBatches?.some((batch) => batch.ownerId === userId));
+  sourceLot?: HarvestLot,
+  productStocks: ProductStockItem[] = []
+): boolean => {
+  if (!canViewPackagingScreen(role) || pkg.htxId !== htxId) return false;
+
+  if (role === 'R04') {
+    const { ownerType, holderId } = getPackageOwnership(pkg, productStocks);
+    // Hàng HTX sở hữu hoặc hàng ký gửi đang do HTX giữ; loại hàng còn tại hộ.
+    return holderId === htxId || (ownerType === 'htx' && !holderId);
+  }
+
+  if (role === 'R06') {
+    return sourceLot?.ownerId === userId || pkg.ownerId === userId ||
+      !!pkg.sourceBatches?.some((batch) => batch.ownerId === userId);
+  }
+  return true;
+};
 
 /**
  * Kiểm tra quyền hạn truy cập màn hình theo vai trò (SRS Mục 7 - Ma trận phân quyền)

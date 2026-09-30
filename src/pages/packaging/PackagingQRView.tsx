@@ -1,15 +1,16 @@
 import React from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, getCanonicalMemberName } from '../../context/AppContext';
 import { Header } from '../../components/Header';
 import { canViewPackagedProduct } from '../../utils/permissions';
+import { getPackageOwnership } from '../../utils/packageOwnership';
 
 export const PackagingQRView: React.FC = () => {
-  const { screenParams, currentHTX, currentRole, currentUser, packages, goBack, navigateTo, harvests, processingLots, productStocks } = useApp();
+  const { screenParams, currentHTX, currentRole, currentUser, packages, members, goBack, navigateTo, harvests, processingLots, productStocks } = useApp();
   const pkgId = screenParams?.pkg?.id || screenParams?.pkgId;
   const pkg = packages.find((item) =>
     item.id === pkgId && canViewPackagedProduct(
       currentRole, item, currentHTX.id, currentUser.id,
-      harvests.find((lot) => lot.id === item.harvestLotId)
+      harvests.find((lot) => lot.id === item.harvestLotId), productStocks
     )
   );
 
@@ -30,6 +31,13 @@ export const PackagingQRView: React.FC = () => {
 
   const hasProc = pkg.processingSnapshot?.hasProcessing ?? (!!pkg.processingLotId || !!procLot);
   const procSnapshot = pkg.processingSnapshot;
+  const ownership = getPackageOwnership(pkg, productStocks);
+  const isConsignedAtHTX = ownership.ownerType === 'ho_dan' && ownership.holderId === currentHTX.id;
+  const ownerName = ownership.ownerType === 'htx'
+    ? currentHTX.name
+    : ownership.ownerType === 'ho_dan'
+    ? `Hộ ${getCanonicalMemberName(ownership.ownerId, ownership.ownerName, members)}`
+    : 'Chưa xác định';
 
   const handlePrint = () => {
     window.print();
@@ -76,6 +84,17 @@ export const PackagingQRView: React.FC = () => {
             <span className="inline-block bg-amber-100 text-amber-900 font-bold text-xs px-3 py-1 rounded-full mt-1">
               {pkg.standard}
             </span>
+          </div>
+
+          <div className={`rounded-2xl border px-3 py-2 text-xs font-semibold ${
+            ownership.ownerType === 'ho_dan'
+              ? 'bg-amber-50 border-amber-200 text-amber-950'
+              : 'bg-sky-50 border-sky-200 text-sky-950'
+          }`}>
+            <div>Chủ sở hữu: <strong>{ownerName}</strong></div>
+            {isConsignedAtHTX && <div>Hàng ký gửi, bên đang giữ: <strong>{currentHTX.name}</strong></div>}
+            {pkg.onBehalfOfFarmer && <div>R03 đóng gói hộ</div>}
+            {pkg.onBehalfOfFarmer && pkg.actorName && <div>Người thực hiện: {pkg.actorName}</div>}
           </div>
 
           {/* BIG QR CODE with HTX logo badge in center */}

@@ -9,6 +9,7 @@ import {
   SeasonHistoryItem,
   DiaryEntry,
   HarvestLot,
+  HarvestLotSource,
   HarvestAllocation,
   ProcessingLot,
   ProcessingInfo,
@@ -66,7 +67,7 @@ import { matchSeasonForZone } from '../utils/seasonMatcher';
 import { getActiveCycle, getCycles, getCycleStatusInfo, getUnitStatusInfo, migrateLegacyUnit } from '../utils/productionUtils';
 import { getDueTaskReminders, taskReminderId } from '../utils/productionTaskHints';
 import { allocationAfterReceipt, getHarvestBalance, getStockItemAvailableQuantity, stockAfterReceipt, validateHandoverQuantity, validateReceiptQuantity, sameUnit } from '../utils/harvestBalance';
-import { clearDemoData, DemoData, loadDemoData, saveDemoData } from '../mock/demoRepository';
+import { clearDemoData, DemoData, loadDemoData, normalizeDemoOwnerNames, saveDemoData } from '../mock/demoRepository';
 import {
   authService,
   diaryService,
@@ -1147,8 +1148,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       primaryZone = farmZones.find((z) => z.id === resolvedSources[0].farmZoneId)!;
-      assignedSeasonId = resolvedSources[0].cycleId;
-      assignedSeasonName = resolvedSources[0].cycleName;
+      assignedSeasonId = resolvedSources[0].cycleId!;
+      assignedSeasonName = resolvedSources[0].cycleName!;
       assignedVariety = lot.variety || primaryZone.variety || 'Nông sản VietGAP';
     } else {
       // B. Kế thừa một vùng đơn lẻ (tương thích ngược)
@@ -1206,8 +1207,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       remainingAvailable: lot.yieldQuantity,
     };
 
-    const resolvedOwnerId = commonOwnerId || primaryZone.ownerId || lot.ownerId || currentUser.id;
-    const resolvedOwnerName = getCanonicalMemberName(resolvedOwnerId, lot.ownerName || commonOwnerName || primaryZone.ownerName, members);
+    const resolvedOwnerId = primaryZone.ownerId || lot.ownerId || currentUser.id;
+    const resolvedOwnerName = getCanonicalMemberName(resolvedOwnerId, lot.ownerName || primaryZone.ownerName, members);
 
     const newLot: HarvestLot = {
       ...lot,
@@ -2372,7 +2373,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw new Error('Bạn không có quyền thực hiện đóng gói và phát hành tem QR cho lô này.');
     }
 
-    const ownerType: StockOwnerType = currentRole === 'R06' ? 'ho_dan' : 'htx';
+    const ownerType: StockOwnerType = targetStock?.ownerType ||
+      (harvestLot.ownerId && harvestLot.ownerId !== 'htx' && harvestLot.ownerId !== currentHTXId ? 'ho_dan' : 'htx');
     const isHTX = ownerType === 'htx';
 
     const weightPerPack = pkg.netWeightPerPack || 1;
@@ -2611,6 +2613,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ownerName: targetStock ? targetStock.ownerName : (isHTX ? currentHTX.name : (harvestLot.ownerName || currentUser.name)),
       holderId: targetStock?.holderId,
       holderName: targetStock?.holderName,
+      actorId: currentUser.id,
+      actorName: currentUser.name,
+      onBehalfOfFarmer: currentRole === 'R03' && ownerType === 'ho_dan',
       processingSnapshot: harvestLot.processingInfo ? {
         hasProcessing: true,
         statusText: 'Đã sơ chế',

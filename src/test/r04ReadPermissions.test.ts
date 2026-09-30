@@ -8,7 +8,8 @@ import {
   canViewHarvestLot,
   canViewPackagedProduct,
 } from '../utils/permissions';
-import { INITIAL_HARVESTS, INITIAL_PACKAGES } from '../mock/data';
+import { INITIAL_HARVESTS, INITIAL_PACKAGES, INITIAL_PRODUCT_STOCKS } from '../mock/data';
+import { createInitialDemoData, loadDemoData, saveDemoData } from '../mock/demoRepository';
 
 describe('R04 xem nguồn cung và lô đóng gói', () => {
   it('mở được danh sách, chi tiết và QR nhưng không mở được màn tạo', () => {
@@ -35,6 +36,43 @@ describe('R04 xem nguồn cung và lô đóng gói', () => {
     assert.equal(canViewHarvestLot('R04', lot, otherHtx, 'r04-user'), false);
     assert.equal(canViewPackagedProduct('R04', pkg, pkg.htxId, 'r04-user'), true);
     assert.equal(canViewPackagedProduct('R04', pkg, pkg.htxId === 'anninh' ? 'dongtao' : 'anninh', 'r04-user'), false);
+  });
+
+  it('chỉ xem lô đóng gói HTX sở hữu hoặc đang giữ, gồm hàng ký gửi', () => {
+    const byId = (id: string) => INITIAL_PACKAGES.find((pkg) => pkg.id === id)!;
+    assert.equal(canViewPackagedProduct('R04', byId('pkg-01'), 'anninh', 'r04-user'), true); // HTX thu mua
+    assert.equal(canViewPackagedProduct('R04', byId('pkg-02'), 'anninh', 'r04-user'), false); // Tại hộ
+    assert.equal(canViewPackagedProduct('R04', byId('pkg-03'), 'dongtao', 'r04-user'), false); // Tại hộ
+    assert.equal(canViewPackagedProduct('R04', byId('pkg-04'), 'quyetthang', 'r04-user'), true); // HTX thu mua
+    assert.equal(canViewPackagedProduct('R04', byId('pkg-qt-thung-15'), 'quyetthang', 'r04-user'), true); // Ký gửi
+    assert.equal(canViewPackagedProduct('R04', byId('pkg-qt-ca-live'), 'quyetthang', 'r04-user'), false); // Tại hộ
+
+    const htxSelfProduced = { ...byId('pkg-01'), id: 'pkg-htx-self', holderId: undefined };
+    assert.equal(canViewPackagedProduct('R04', htxSelfProduced, 'anninh', 'r04-user'), true);
+    const htxOwnedAtHousehold = { ...byId('pkg-01'), id: 'pkg-away', holderId: 'u_r06_an' };
+    assert.equal(canViewPackagedProduct('R04', htxOwnedAtHousehold, 'anninh', 'r04-user'), false);
+
+    const receivedPackage = byId('pkg-02');
+    const receivedStock = {
+      ...INITIAL_PRODUCT_STOCKS[0], id: 'stock-received-package',
+      packageId: receivedPackage.id, packageCode: receivedPackage.code,
+      ownerType: 'ho_dan' as const, ownerId: 'u_r06_an', holderId: 'anninh', quantity: 20,
+    };
+    assert.equal(canViewPackagedProduct('R04', receivedPackage, 'anninh', 'r04-user', undefined, [receivedStock]), true);
+  });
+
+  it('khôi phục thông tin sở hữu của lô demo đã lưu từ phiên cũ', () => {
+    const data = createInitialDemoData();
+    data.packages = data.packages.map(({ ownerType, ownerId, ownerName, holderId, holderName, ...pkg }) => pkg);
+    const memory = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => { memory.set(key, value); },
+    };
+    saveDemoData(storage, data);
+    const restored = loadDemoData(storage).data.packages;
+    assert.equal(canViewPackagedProduct('R04', restored.find((pkg) => pkg.id === 'pkg-qt-thung-15')!, 'quyetthang', 'r04-user'), true);
+    assert.equal(canViewPackagedProduct('R04', restored.find((pkg) => pkg.id === 'pkg-02')!, 'anninh', 'r04-user'), false);
   });
 
   it('giữ quyền cũ của R02, R03, R06 và phạm vi hộ', () => {

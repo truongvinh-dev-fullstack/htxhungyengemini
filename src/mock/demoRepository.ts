@@ -143,6 +143,20 @@ export function loadDemoData(storage: Pick<Storage, 'getItem'>): DemoLoadResult 
           (data as any)[key] = rawData[key];
         }
       }
+      // Bổ sung quyền sở hữu/bên giữ cho lô demo cũ đã lưu trước khi có các trường này.
+      const seedPackages = new Map(defaults.packages.map((pkg) => [pkg.id, pkg]));
+      data.packages = data.packages.map((pkg) => {
+        const seed = seedPackages.get(pkg.id);
+        if (!seed) return pkg;
+        return {
+          ...pkg,
+          ownerType: pkg.ownerType ?? seed.ownerType,
+          ownerId: pkg.ownerId ?? seed.ownerId,
+          ownerName: pkg.ownerName ?? seed.ownerName,
+          holderId: pkg.holderId ?? seed.holderId,
+          holderName: pkg.holderName ?? seed.holderName,
+        };
+      });
       normalizeDemoOwnerNames(data);
       return { data };
     }
